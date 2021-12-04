@@ -20,11 +20,14 @@ void recursiveDirParser(std::string path, uint32_t inode) {
 }
 */
 
-LoopDevice*	mem;
+BlockDevice*	mem;
 
-void makeFS(LoopDevice* device) {
+void makeFS(BlockDevice* device) {
 	uint8_t* buffer = new uint8_t[device->getBlockSize()];
+	uint32_t headerBlock = 0;
+	uint32_t inodesStartBlock = 1;
 
+	//Init blocks
 	for (uint32_t i = 0; i < device->getSizeInBlocks(); i++) {
 		memset(buffer, 0, device->getBlockSize());
 		RDBlockHeader_t* bheader	= (RDBlockHeader_t*)buffer;
@@ -34,6 +37,7 @@ void makeFS(LoopDevice* device) {
 		device->writeBlock(i, buffer);
 	}
 
+	//Init header
 	memset(buffer, 0, device->getBlockSize());
 	RDHeader_t* header			= (RDHeader_t*)buffer;
 	header->magic				= RD_MAGIC;
@@ -42,21 +46,23 @@ void makeFS(LoopDevice* device) {
 	header->inodePoolSize		= RD_INODE_POOL;
 
 	device->writeBlock(0, buffer);
-	
-	for (uint32_t i = 1; i < RD_INODE_POOL + 1; i++) {
-		device->readBlock(i, buffer);
+
+	//Init inodes
+	for (uint32_t i = 0; i < header->inodePoolSize; i++) {
+		device->readBlock(i + inodesStartBlock, buffer);
 
 		RDBlockHeader_t* bheader	= (RDBlockHeader_t*)buffer;
 		bheader->flags				|= RD_BUSY;
 		
-		RDNode_t* node		= (RDNode_t*)&bheader[1];
+		RDNode_t* node		= (RDNode_t*)(buffer + sizeof(RDBlockHeader_t));
 		node->flags			= 0;
-		node->inode			= (i - 1);
+		node->inode			= i;
 		node->usedBlocks	= 0;		
 
-		device->writeBlock(i, buffer);
+		device->writeBlock(i + inodesStartBlock, buffer);
 	}
 
+	//Create root inode
 	device->readBlock(1, buffer);
 	
 	RDNode_t* rootNode = (RDNode_t*)buffer;
@@ -64,57 +70,90 @@ void makeFS(LoopDevice* device) {
 	rootNode->flags = RD_DIRECTORY | RD_BUSY;
 	rootNode->usedBlocks = 1;
 
-	uint32_t* blocks = (uint32_t*)&rootNode[1];
-	blocks[0] = RD_INODE_POOL + 1;
+	uint32_t* blocks = (uint32_t*)(buffer + sizeof(RDNode_t));
+	blocks[0] = inodesStartBlock;
 
 	device->writeBlock(1, buffer);
 
-
-
-	device->readBlock(RD_INODE_POOL + 1, buffer);
+	//Set initial block to BUSY state for root inode
+	device->readBlock(inodeStartBlock, buffer);
 	
 	RDBlockHeader_t* bheader	= (RDBlockHeader_t*)buffer;
 	bheader->flags				= RD_BUSY;
 
-	device->writeBlock(RD_INODE_POOL + 1, buffer);
+	device->writeBlock(inodeStartBlock, buffer);
+
+	//Free resources
+	free(buffer);
 }
 
-RDNode_t* findFreeNode(FS_t* fs) {
-	for (uint32_t i = 0; i < ; i++) {
-		if (fs->nodes[i].flags & RD_BUSY)
+uint32_t findFreeNode(BlockDevice* device) {
+	uint32_t inode = 0;
+	uint8_t* buffer = new uint8_t[device->getBlockSize()];
+	
+	for (uint32_t i = 0; i < header->inodePoolSize; i++) {
+		device->readBlock(i + 1, buffer);
+
+		RDNode_t* node = (RDNode_t*)(buffer + sizeof(RDBlockHeader_t));	
+		
+		if (node->flags & RD_BUSY)
 			continue;
 
-		RDNode_t* freeNode = &fs->nodes[i];
-		freeNode->inode = i;
-		return freeNode;
+		inode = node->inode;
+		break;
 	}
-	return 0;
+	
+	free(buffer);
+	return inode;
 }
 
-RDDirent_t* findFreeDirent(FS_t* fs, RDNode_t* node) {
+uint32_t findFreeDirent(BlockDevice* device, uint32_t inode) {
+	uint32_t dirent = 0;
+	uint8_t* buffer = new uint8_t[device->getBlockSize()];
+	uint8_t* bbuffer = new uint8_t[device->getBlockSize()];
+	device->readBlock(1 + inode, buffer);
+
+	RDNode_t* node = (RDNode_t*)(buffer + sizeof(RDBlockHeader_t));	
+	
 	if (!(node->flags & RD_DIRECTORY && node->flags & RD_BUSY))
 		return 0;
 
-	RDDirent_t* dirents			= (RDDirent_t*)(fs->mem + node->start);
-	uint32_t	dirents_size	= node->length / sizeof(RDDirent_t);
+	uint32_t* blocks = (uint32_t*)(buffer + sizeof(RDNode_t));
+	for (uint32_t i = 0; i < node->usedBlocks; i++) {
+		device->readBlock(blocks[i], bbuffer);
 
-	for (uint32_t i = 0; i < dirents_size; i++) {
-		if (dirents[i].flags & RD_BUSY)
-			continue;
+		for (uint32_t j = 0; j < ((device->getBlockSize() - sizeof(RDBlockHeader_t)) / sizeof(RDDirent_t)); j++) {
+			RDDirent_t* dirent = (RDDirent_t*)(buffer + sizeof(RDBlockHeader_t) + j);
+			if (dirent->flags & RD_BUSY)
+				continue;
 
-		return &dirents[i];
+			dirent = j;
+			break;
+		}
+
+		if (dirent != 0) 
+			break;
 	}
-	return 0;
+
+	free(buffer);
+	free(bbuffer);
+	return dirent;
 }
 
-uint32_t RDRead(FS_t* fs, RDNode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
-	if (offset > node->length)
+uint32_t RDRead(BlockDevice* fs, uint32_t inode, uint32_t offset, uint32_t size, uint8_t* data) {
+	uint8_t* buffer = new uint8_t[device->getBlockSize()];
+	device->readBlock(1 + inode, buffer);
+
+	RDNode_t* node = (RDNode_t*)(buffer + sizeof(RDBlockHeader_t));
+	uint32_t length = fs->getBlockSize() * node->usedBlocks;
+	if (offset > length)
 		return 0;
 
-	if (offset + size > node->length)
-		size = node->length - offset;
+	if (offset + size > length)
+		size = length - offset;
 
-	memcpy(buffer, (uint8_t*)(fs->mem + node->start + offset), size);
+	
+	memcpy(data, (uint8_t*)(fs->mem + node->start + offset), size);
 	return size;
 }
 
