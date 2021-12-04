@@ -5,33 +5,25 @@
 #include "systimer.h"
 #include "paging.h"
 #include "kheap.h"
+#include "fs.h"
+#include "initrd.h"
+
+FSNode_t* ROOTFS;
+
+extern uint32_t placementAddress;
 
 int main(multiboot_t* mboot) {
-	screenClear();
-	printf("Hello, world!\n");
-	printf("Welcome to kernel!\n");
-
 	initDescriptorTables();
-	uint32_t a = kmalloc(8);
+	screenClear();
+
+	ASSERT(mboot->mods_count > 0);
+	uint32_t initrdLocation = *((uint32_t*)mboot->mods_addr);
+	uint32_t initrdEnd = *(uint32_t*)(mboot->mods_addr + 4);
+	placementAddress = initrdEnd;
 
 	initPaging();
-	
-	uint32_t b = kmalloc(8);
-	uint32_t c = kmalloc(8);
 
-	printf("a: 0x%x, b: 0x%x\n", a, b);
-
-	kfree(c);
-	kfree(b);
-	uint32_t d = kmalloc(12);
-	
-	printf("c: 0x%x, d: 0x%x\n", c, d);
-	
-//	uint32_t* ptr = (uint32_t*)0xA0000000;
-//   	uint32_t do_page_fault = *ptr;
-//	asm volatile ("int $0x38");
-	
-//	initSysTimer(50);
+	ROOTFS = initInitrd(initrdLocation);
 	
 	while (1) {
 		

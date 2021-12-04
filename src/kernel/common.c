@@ -30,6 +30,14 @@ void memset(void* dest, uint8_t val, uint32_t len) {
 		*temp++ = val;
 }
 
+int strlen(const char* str) {
+	int len = 0;
+	while (*str++)
+		len++;
+
+	return len;
+}
+
 int strcmp(const char* str1, const char* str2) {
 	register signed char __res;
 	while(1) {
@@ -42,6 +50,7 @@ int strcmp(const char* str1, const char* str2) {
 char* strcpy(char* dest, const char* src) {
 	char* tmp = dest;
 	while((*dest++ = *src++) != '\0');
+	*(--dest) = '\0';
 	return tmp;
 }
 
