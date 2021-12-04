@@ -1,5 +1,5 @@
 AUXFILES := Makefile
-PROJDIRS := main asm interrupts memoryManagment utils io pci multitasking fileReaders
+PROJDIRS := ./
 
 SRCFILES := $(shell find $(PROJDIRS) -type f -name "*.c")
 HDRFILES := $(shell find $(PROJDIRS) -type f -name "*.h")
@@ -12,13 +12,13 @@ ALLFILES := $(SRCFILES) $(HDRFILES) $(ASMFILES) $(AUXFILES)
 
 CINCDIRS := $(foreach d,$(PROJDIRS),-I$(d))
 
-EXEC 			:= kernel
+EXEC 			:= testModule
 
 CC				:= gcc
 ASM				:= nasm
 LD				:= ld
 
-CFLAGS			:= -m32 -g3 -fno-pic -fno-pie -nostdlib -nostdinc -fno-builtin -fno-stack-protector
+CFLAGS			:= -m32 -g -nostdlib -fno-pic -fno-pie -nostdinc -fno-builtin -fno-stack-protector
 LDFLAGS			:= -Tlink.ld -m elf_i386
 ASFLAGS			:= -felf
 
@@ -34,7 +34,7 @@ cleano:
 
 clean: cleano
 	$(info [make]	Clean)
-	-@rm $(EXEC)
+	@rm $(EXEC)
 	
 link: $(OBJFILES)
 	$(info [$(LD)]	Linking $(EXEC))
@@ -50,20 +50,12 @@ link: $(OBJFILES)
 
 pack: remake
 	$(info [make]	Packing)
-	@mkdir image
+	-@mkdir image
 	@sudo mount /dev/sdb1 image
-	@sudo rm image/kernel
-	@sudo cp kernel image/kernel
+	-@sudo rm image/modules/testModule
+	@sudo cp testModule image/modules/testModule
 	@sudo umount /dev/sdb1
-	@rm -rf image
-
-run: pack
-	$(info [make]	Running)
-	@sudo qemu-system-i386 -hda /dev/sdb
-
-debug: pack
-	$(info [make]	Debug)
-	@sudo qemu-system-i386 -s -S -hda /dev/sdb
+	-@rm -rf image
 	
 secInfo: clearConsole
 	readelf -S $(EXEC)
