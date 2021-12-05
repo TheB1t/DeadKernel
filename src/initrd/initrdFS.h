@@ -168,42 +168,138 @@ uint32_t initrdFS_findFreeBlock(initrdFS_t* fs) {
 		
 		if (!(blockEntry->header->flags & FS_FLAG_BUSY)) {
 			block = i;
-			break;
+			goto end;
 		}
 	}
 
+end:
 	kfree(blockEntry);
 	return block;
 }
 
-void initrdFS_initRootNode(initrdFS_t* fs, uint32_t block) {
+uint32_t initrdFS_getInodesFirstBlock(initrdFS_t* fs) {
 	initrdFS_readBlock(fs, block);
+	initrdFS_Header_t* header = (initrdFS_Header_t*)fs->buffer;
+
+	if (header->magic == FS_MAGIC)
+		return header->inodesFirstBlock	= inodesFirstBlock;
+
+	return 0;
+}
+
+uint32_t initrdFS_findFreeInode(initrdFS_t* fs) {
+	uint32_t inodeNumber = 0;
+	uint32_t currentBlock = initrdFS_getInodesFirstBlock(fs);
+
 	initrdFS_Block_t* blockEntry = (initrdFS_Block_t*)kmalloc(sizeof(initrdFS_Block_t));
+
+	while (1) {
+		initrdFS_readBlock(fs, currentBlock);
+		initrdFS_buf2block(fs, blockEntry);
+
+		uint32_t inodesCount = alignValue(blockEntry->dataSize, sizeof(initrdFS_INode_t));
+
+		for (uint32_t i = 0; i < inodesCount; i++) {
+			initrdFS_INode_t* inode = (initrdFS_INode_t*)(blockEntry->dataPtr + (i * sizeof(initrdFS_INode_t));
+			if (!(inode->flags & FS_FLAG_BUSY)) {
+				inodeNumber = inode->number;
+				goto end;
+			}
+		}
+
+		if (!blockEntry->footer->nextBlock)
+			goto end;
+
+		currentBlock = blockEntry->footer->nextBlock;
+	}
+
+end:
+	kfree(blockEntry);
+	return 0;
+}
+
+void initrdFS_findINodeBlock(initrdFS_t* fs, uint32_t block) {
+	uint32_t inodesFirstBlock = initrdFS_getInodesFirstBlock(fs);
+
+	while (1) {
+		initrdFS_readBlock(fs, inodesFirstBlock);
+		initrdFS_buf2block(fs, blockEntry);
+
+		uint32_t inodesCount = alignValue(blockEntry->dataSize, sizeof(initrdFS_INode_t));
+
+		for (uint32_t i = 0; i < inodesCount; i++) {
+			initrdFS_INode_t* inode = (initrdFS_INode_t*)(blockEntry->dataPtr + (i * sizeof(initrdFS_INode_t));
+			if (!(inode->flags & FS_FLAG_BUSY)) {
+				inodeNumber = inode->number;
+				goto end;
+			}
+		}
+
+		if (!blockEntry->footer->nextBlock)
+			goto end;
+
+		currentBlock = blockEntry->footer->nextBlock;
+	}	
+}
+
+void initrdFS_initRootNode(initrdFS_t* fs) {
+	uint32_t inodesFirstBlock = initrdFS_getInodesFirstBlock(fs);
+
+	initrdFS_Block_t* blockEntry = (initrdFS_Block_t*)kmalloc(sizeof(initrdFS_Block_t));
+
+	//Init Root INode
+	initrdFS_readBlock(fs, inodesFirstBlock);
 	initrdFS_buf2block(fs, blockEntry);
 
 	blockEntry->header->flags = FS_FLAG_BUSY;
 	
 	initrdFS_INode_t* inode0 = (initrdFS_INode_t*)blockEntry->dataPtr;
 	
-	inode0->number	= 0;
-	inode0->flags	= FS_FLAG_DIR | FS_FLAG_BUSY;
+	inode0->number		= 0;
+	inode0->flags		= FS_FLAG_DIR | FS_FLAG_BUSY;
+	inode0->dataBlock	= inodesFirstBlock + 1;
 	
-	initrdFS_writeBlock(fs, block);
+	initrdFS_writeBlock(fs, inodesFirstBlock);
 
+	//Alloc datBlock for root INode
+	initrdFS_readBlock(fs, inodesFirstBlock + 1);
+	initrdFS_buf2block(fs, blockEntry);
+
+	blockEntry->header->flags 		= FS_FLAG_BUSY;	
+
+	initrdFS_writeBlock(fs, inodesFirstBlock + 1);
+	
 	kfree(blockEntry);
 }
 
 uint8_t initrdFS_findFS(initrdFS_t* fs) {
 	initrdFS_readBlock(fs, 0);
 	initrdFS_Header_t* header = (initrdFS_Header_t*)fs->buffer;
+	
 	if (header->magic == FS_MAGIC)
 		return 1;
 
 	return 0;
-}	
+}
+
+void initrdFS_makeDir(initrdFS_t* fs, uint32_t rootNode) {
+	uint32_t freeInode = initrdFS_findFreeInode(fs);
+
+	initrdFS_readBlock(fs, rootNode);
+	initrdFS_buf2block(fs, blockEntry);
+	
+	initrdFS_INode_t* inode0 = (initrdFS_INode_t*)blockEntry->dataPtr;
+	
+	inode0->number		= 0;
+	inode0->flags		= FS_FLAG_DIR | FS_FLAG_BUSY;
+	inode0->dataBlock	= inodesFirstBlock + 1;
+	
+	initrdFS_writeBlock(fs, inodesFirstBlock);
+
+}
 
 void initrdFS_makeFS(initrdFS_t* fs) {
 	initrdFS_initHeader(fs, 0, 512, 1024, 1);
 	initrdFS_initBlocks(fs, 1, fs->device->blockCount);
-	initrdFS_initRootNode(fs, 1);
+	initrdFS_initRootNode(fs);
 }
