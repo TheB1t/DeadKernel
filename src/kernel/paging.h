@@ -20,7 +20,7 @@ typedef struct {
 } PageTable_t;
 
 typedef struct {
-	PageTable_t* tables[1024];
+	PageTable_t* 	tables[1024];
 	uint32_t		tablesPhysical[1024];
 	uint32_t		physicalAddr;
 } PageDir_t;

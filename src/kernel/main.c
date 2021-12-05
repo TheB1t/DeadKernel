@@ -23,7 +23,13 @@ int main(multiboot_t* mboot) {
 
 	initPaging();
 
-	ROOTFS = initInitrd(initrdLocation);
+	//ROOTFS = initInitrd(initrdLocation);
+
+	void* a = _kmalloc(512, 1, 0);
+	void* b = _kmalloc(512, 1, 0);
+	void* c = _kmalloc(512, 1, 0);
+
+	printf("a -> %x b -> %x c -> %x", a, b, c);
 	
 	while (1) {
 		

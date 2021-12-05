@@ -140,6 +140,7 @@ uint32_t findFreeDirent(BlockDevice* device, uint32_t inode) {
 	return dirent;
 }
 
+/*
 uint32_t RDRead(BlockDevice* fs, uint32_t inode, uint32_t offset, uint32_t size, uint8_t* data) {
 	uint8_t* buffer = new uint8_t[device->getBlockSize()];
 	device->readBlock(1 + inode, buffer);
@@ -157,17 +158,19 @@ uint32_t RDRead(BlockDevice* fs, uint32_t inode, uint32_t offset, uint32_t size,
 	return size;
 }
 
+
 uint32_t RDWrite(FS_t* fs, RDNode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
 	memcpy((uint8_t*)(fs->mem + node->start + offset), size);
 	
 }
+*/
 
-RDNode_t* addDir(FS_t* fs, RDNode_t* node, char* dirname) {
-	RDNode_t* freeNode = findFreeNode(fs);
+RDNode_t* addDir(BlockDevice* device, uint32_t node, char* dirname) {
+	uint32_t freeNode = findFreeNode(device);
 	if (!freeNode)
 		return 0;
 
-	RDDirent_t* freeDirent = findFreeDirent(fs, node);
+	uint32_t freeDirent = findFreeDirent(device, node);
 	if (!freeDirent)
 		return 0;
 		
