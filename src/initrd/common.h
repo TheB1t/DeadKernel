@@ -9,7 +9,6 @@ uint32_t alignValue(uint32_t value, uint32_t base) {
     uint32_t tmpBase = ~(0xFFFFFFFF % base);
     if (value & tmpBase) {
         value &= tmpBase;
-        value += base;
     }
     return value;
 }

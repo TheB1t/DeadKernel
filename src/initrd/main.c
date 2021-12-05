@@ -1,18 +1,49 @@
 #include <stdio.h>
 #include "blockDevice.h"
+#include "initrdFS.h"
 
-
+//file for testing
 int main() {
-	BlockDevice_t* dev = (BlockDevice_t*)malloc(sizeof(BlockDevice_t));
+	BlockDevice_t* dev;
 	BlockDevice_init(&dev, 512, 512);
 
-	char data[] = "deadbeef";
-	BlockDevice_writeBlock(dev, 16, 64, sizeof(data), (uint8_t*)data);
+	initrdFS_t* fs;
+	initrdFS_init(&fs, dev);
 
-	char buffer[256];
-	BlockDevice_readBlock(dev, 16, 64, sizeof(data), (uint8_t*)buffer);
+	initrdFS_makeFS(fs);
 
-	printf("%s\n", buffer);
-	
+	if (initrdFS_findFS(fs))
+		printf("%s\n", "FOUND");
+
+	//initrdFS_makeDir(fs, 0, "TEST");
+	char data[4096 * 4];
+	for (uint32_t i = 0; i < sizeof(data); i++)
+		data[i] = rand() % 255;
+
+	initrdFS_writeInodeData(fs, 0, 0, sizeof(data), (uint8_t*)data);
+
+	char badchar = 0xDE;
+	initrdFS_writeInodeData(fs, 0, (512 / 2) + 1024, 1, (uint8_t*)&badchar);
+
+	char badchar2 = 0;
+	initrdFS_readInodeData(fs, 0, (512 / 2) + 1024, 1, (uint8_t*)&badchar2);
+
+	printf("%s\n", badchar == badchar2 ? "INJECTED" : "INJECT FAILED");
+
+	char buffer[4096 * 4];
+	initrdFS_readInodeData(fs, 2, 0, sizeof(data), (uint8_t*)buffer);
+
+	uint8_t passed = 1;
+	for (uint32_t i = 0; i < sizeof(data); i++) {
+		if (data[i] != buffer[i]) {
+			printf("%d\n", i);
+			passed = 0;
+			break;
+		}
+	}
+
+	printf("%s\n", passed ? "PASSED" : "FAILED");
+
+	initrdFS_deInit(&fs);
 	BlockDevice_deInit(&dev);
 }
