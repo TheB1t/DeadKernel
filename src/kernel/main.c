@@ -5,35 +5,32 @@
 #include "systimer.h"
 #include "paging.h"
 #include "kheap.h"
-#include "fs.h"
-#include "initrd.h"
-
-FSNode_t* ROOTFS;
+#include "task.h"
+#include "syscall.h"
 
 extern uint32_t placementAddress;
+uint32_t initialESP;
 
-int main(multiboot_t* mboot) {
+int main(multiboot_t* mboot, uint32_t initialStack) {
+	initialESP = initialStack;
+	
 	initDescriptorTables();
 	screenClear();
 
-	ASSERT(mboot->mods_count > 0);
+	initSysTimer(50);
+	
+//	ASSERT(mboot->mods_count > 0);
 	uint32_t initrdLocation = *((uint32_t*)mboot->mods_addr);
 	uint32_t initrdEnd = *(uint32_t*)(mboot->mods_addr + 4);
 	placementAddress = initrdEnd;
-
+	
 	initPaging();
+	initTasking();
+	initSysCalls();
+	switchToUserMode();
 
-	//ROOTFS = initInitrd(initrdLocation);
+//	printf("OOPS, ERROR!\n");
+	syscall_screenPutString("Welcome to the fucking user-mode asshole!\n");
 
-	void* a = _kmalloc(512, 1, 0);
-	void* b = _kmalloc(512, 1, 0);
-	void* c = _kmalloc(512, 1, 0);
-
-	printf("a -> %x b -> %x c -> %x", a, b, c);
-	
-	while (1) {
-		
-	}
-	
 	return 0xDEADBABA;
 }

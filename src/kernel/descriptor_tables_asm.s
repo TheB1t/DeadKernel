@@ -1,5 +1,4 @@
 [GLOBAL GDTFlush]
-
 GDTFlush:
 	mov eax, [esp + 4]
 	lgdt [eax]
@@ -16,8 +15,13 @@ GDTFlush:
 	ret
 
 [GLOBAL IDTFlush]
-
 IDTFlush:
 	mov eax, [esp + 4]
 	lidt [eax]
+	ret
+
+[GLOBAL TSSFlush]
+TSSFlush:
+	mov ax, 0x2B
+	ltr ax
 	ret

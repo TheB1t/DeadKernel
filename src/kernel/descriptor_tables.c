@@ -6,7 +6,7 @@
 #define pack_flags(P, DPL) ((((0x00 | 0b01110)) | (DPL & 0b11) << 5) | (P & 0b1) << 7)
 
 //Global Description Table
-#define GDT_ENTRIES_SIZE 5 
+#define GDT_ENTRIES_SIZE 6
 
 GDTEntry_t	GDTEntries[GDT_ENTRIES_SIZE];
 GDTPTR_t	GDT;
@@ -27,9 +27,18 @@ extern void IDTFlush(uint32_t);
 static void InitIDT();
 static void IDTSetGate(uint8_t, uint32_t, uint16_t, uint8_t);
 
+
+TSSEntry_t	TSSEntry0;
+
+extern void TSSFlush();
+static void writeTSS(int32_t, uint16_t, uint32_t);
+
+extern ISR_t interruptHandlers[];
+
 void initDescriptorTables() {
 	InitGDT();
 	InitIDT();
+	memset(&interruptHandlers, 0, sizeof(ISR_t) * IDT_ENTRIES_SIZE);
 	asm volatile ("sti");
 }
 
@@ -43,7 +52,10 @@ static void InitGDT() {
 	GDTSetGate(3, 0, 0xFFFFFFFF, pack_access(0b1010, 0b1, 0b11, 0b1), pack_granularity(0b0, 0b1, 0b1)); 	//User Code segment	
 	GDTSetGate(4, 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, 0b11, 0b1), pack_granularity(0b0, 0b1, 0b1));   //User Data segment 
 
+	writeTSS(5, 0x10, 0x0);
+	
 	GDTFlush((uint32_t)&GDT);
+	TSSFlush();
 }
 
 static void GDTSetGate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
@@ -96,7 +108,8 @@ static void InitIDT() {
 	IDTSetGate(29, (uint32_t)isr29, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(30, (uint32_t)isr30, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(31, (uint32_t)isr31, 0x08, pack_flags(0b1, 0b00));
-
+	IDTSetGate(128, (uint32_t)isr128, 0x08, pack_flags(0b1, 0b00));
+	
 	outb(0x20, 0x11);
 	outb(0xA0, 0x11);
 	outb(0x21, 0x20);
@@ -124,7 +137,7 @@ static void InitIDT() {
 	IDTSetGate(45, (uint32_t)irq13, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(46, (uint32_t)irq14, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(47, (uint32_t)irq15, 0x08, pack_flags(0b1, 0b00));
-
+	
 	IDTFlush((uint32_t)&IDT);
 }
 
@@ -135,5 +148,24 @@ static void IDTSetGate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags) 
 	IDTEntries[num].sel			= sel;
 	IDTEntries[num].always0		= 0;
 
-	IDTEntries[num].flags		= flags;
+	IDTEntries[num].flags		= flags | 0x60;
+}
+
+static void writeTSS(int32_t num, uint16_t ss0, uint32_t esp0) {
+	uint32_t base	= (uint32_t)&TSSEntry0;
+	uint32_t limit	= base + sizeof(TSSEntry_t);
+	
+	GDTSetGate(num, base, limit, pack_access(0b1001, 0b0, 0b11, 0b1), pack_granularity(0b0, 0b0, 0b0));
+
+	memset(&TSSEntry0, 0, sizeof(TSSEntry_t));
+
+	TSSEntry0.ss0	= ss0;
+	TSSEntry0.esp0	= esp0;
+
+	TSSEntry0.cs	= 0x0B;
+	TSSEntry0.ss	= TSSEntry0.ds = TSSEntry0.es = TSSEntry0.fs = TSSEntry0.gs = 0x13;
+}
+
+void setKernelStack(uint32_t stack) {
+   TSSEntry0.esp0 = stack;
 }

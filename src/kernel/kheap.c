@@ -69,9 +69,9 @@ uint32_t _kmalloc(uint32_t size, uint8_t align, uint32_t* phys) {
 		else
 			addr = (uint32_t)alloc(size, kernelHeap);
 
-		if (phys != 0) {
+		if (phys) {
 			Page_t* page = getPage(addr, 0, kernelDir);
-			*phys = page->frame * PAGE_SIZE + (addr & -PAGE_SIZE); 
+			*phys = page->frame * PAGE_SIZE + (addr & (PAGE_SIZE - 1)); 
 		}
 		
 		return addr;

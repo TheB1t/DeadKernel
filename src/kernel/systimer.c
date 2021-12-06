@@ -1,11 +1,10 @@
 #include "systimer.h"
-#include "screen.h"
 
 uint32_t tick = 0;
 
 static void timerCallback(registers_t regs) {
 	tick++;
-	printf("SysTimer Tick: %d\n", tick);
+	taskSwitch();
 }
 
 void initSysTimer(uint32_t freq) {

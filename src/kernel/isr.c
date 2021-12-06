@@ -7,8 +7,8 @@ void ISRHandler(registers_t regs) {
 		ISR_t handler = interruptHandlers[regs.int_no];
 		handler(regs);
 	} else {
-		printf("Unhandled Interrupt: 0x%x\n", regs.int_no);
-		//PANIC("Unhandled Interrupt");
+		printf("unhandled Interrupt: 0x%x\n", regs.int_no);
+		PANIC("Unhandled ISR interrupt");
 	}
 }
 

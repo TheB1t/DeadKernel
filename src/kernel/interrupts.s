@@ -3,7 +3,7 @@
   isr%1:
     cli
     push byte 0
-    push byte %1
+    push %1
     jmp ISRCommonStub
 %endmacro
 
@@ -11,7 +11,7 @@
   [GLOBAL isr%1]
   isr%1:
     cli
-    push byte %1
+    push %1
     jmp ISRCommonStub
 %endmacro
 
@@ -47,9 +47,9 @@ ISR_NOERRCODE 28
 ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
+ISR_NOERRCODE 128
 
 [EXTERN ISRHandler]
-
 ISRCommonStub:
 	pusha
 
@@ -106,7 +106,6 @@ IRQ		15, 47
 
 
 [EXTERN IRQHandler]
-
 IRQCommonStub:
 	pusha
 

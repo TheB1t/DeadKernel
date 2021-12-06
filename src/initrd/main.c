@@ -31,7 +31,7 @@ int main() {
 	printf("%s\n", badchar == badchar2 ? "INJECTED" : "INJECT FAILED");
 
 	char buffer[4096 * 4];
-	initrdFS_readInodeData(fs, 2, 0, sizeof(data), (uint8_t*)buffer);
+	initrdFS_readInodeData(fs, 0, 0, sizeof(data), (uint8_t*)buffer);
 
 	uint8_t passed = 1;
 	for (uint32_t i = 0; i < sizeof(data); i++) {

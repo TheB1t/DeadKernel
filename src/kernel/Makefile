@@ -1,4 +1,4 @@
-SOURCES = boot.o main.o common.o screen.o descriptor_tables.o descriptor_tables_asm.o interrupts.o isr.o systimer.o kheap.o paging.o fs.o initrd.o
+SOURCES = boot.o main.o common.o screen.o descriptor_tables.o descriptor_tables_asm.o interrupts.o isr.o systimer.o kheap.o paging.o process.o task.o syscall.o
 
 CFLAGS = -m32 -g -nostdlib -nostdinc -fno-builtin -fno-stack-protector
 LDFLAGS = -Tlink.ld -m elf_i386

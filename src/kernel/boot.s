@@ -26,6 +26,7 @@ mboot:
 [EXTERN main]
 
 start:
+  push    esp
   push    ebx
   ; Execute the kernel:
   cli
