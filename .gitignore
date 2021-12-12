@@ -1,3 +1,4 @@
 *.o
 *.vmdk
 *.img
+*.sh

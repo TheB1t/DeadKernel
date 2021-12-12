@@ -211,17 +211,12 @@ uint32_t PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_
     if (bus > 255 || dev > 31 || fn > 7 || reg > 255)
            return FAIL;
 
-	outl(PCI_CONF1_ADDRESS(bus, dev, fn, reg), 0xCF8);
+	outl(0xCF8, PCI_CONF1_ADDRESS(bus, dev, fn, reg));
 	switch (len) {
-		case 1:
-			*value = inb(0xCFC + (reg & 3));
-			break;
-		case 2:
-			*value = inw(0xCFC + (reg & 2));
-			break;
-		case 4:
-			*value = inl(0xCFC);
-			break;
+		case 1:	*value = (inl(0xCFC) >> ((reg & 3) * 8)) & 0x000000FF;	break;
+		case 2:	*value = (inl(0xCFC) >> ((reg & 2) * 8)) & 0x0000FFFF;	break;
+		case 4:	*value =  inl(0xCFC)					 & 0xFFFFFFFF;	break;
+		default: return FAIL;
     }
 
 	return SUCC;

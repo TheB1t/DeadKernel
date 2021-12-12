@@ -16,7 +16,7 @@
 #define SUCC							0x01
 #define FAIL							0x00
 
-#define PCI_CONF1_ADDRESS(bus, dev, fn, reg) (0x80000000 | (bus << 16) | (dev << 11) | (fn << 8) | (reg & ~3))
+#define PCI_CONF1_ADDRESS(bus, dev, fn, reg) ((uint32_t)0x80000000 | ((uint32_t)(bus) << 16) | ((uint32_t)(dev) << 11) | ((uint32_t)(fn) << 8) | ((uint32_t)(reg)))
 
 #define PCI_SUCC						0x00
 #define PCI_NOT_SUPPORTED				0x81

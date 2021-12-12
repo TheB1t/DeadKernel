@@ -28,23 +28,44 @@ int main(multiboot_t* mboot, uint32_t initialStack) {
 	initPaging();
 
 	if (BIOS32Find()) {
-		printf("BIOS32 found on 0x%x\n", BIOS32GetAddress());
+		printf("BIOS32 found on 0x%08x\n", BIOS32GetAddress());
 	} else {
 		printf("BIOS32 not found\n");
 	}
 	
 	uint8_t	HWMech, majorVer, minorVer;
 	if (BIOS32CheckPCI(&majorVer, &minorVer, &HWMech)) {
-		printf("PCI BIOS found %x %x:%x\n", HWMech, majorVer, minorVer);
+		printf("PCI BIOS found %02x %02x:%02x\n", HWMech, majorVer, minorVer);
 	} else {
 		printf("NOT FOUND\n");
 	}
-
+/*
 	printf("Scan PCI bus...\n");
 	for (uint32_t i = 0; i < 0xFFFFFF; i++) {
 		PCIDevice_t device;
-		if (!PCIBIOSFindClass(i, 0, &device)) {
+		if (!PCIDirectFindClass(i, &device)) {
 			printf("Found device %s [%x:%x:%x]\n", PCIGetClassName(i), device.bus, device.dev, device.fn);
+		}
+	}
+	
+
+	printf("Scan done!\n");
+*/
+	printf("Scan PCI bus...\n");
+	uint32_t tmpDword = 0;
+	for (uint32_t bus = 0; bus < 256; bus++) {
+		for (uint32_t dev = 0; dev < 32; dev++) {
+			for (uint32_t fn = 0; fn < 8; fn++) {
+				PCIDirectRead(bus, dev, fn, 0x00, 4, &tmpDword);
+				uint16_t deviceID = (tmpDword >> 16)	& 0xFFFF;
+				uint16_t vendorID = (tmpDword >> 0)		& 0xFFFF; 
+				if (vendorID != 0xFFFF) {
+					PCIDirectRead(bus, dev, 0, 0x08, 4, &tmpDword);
+					uint32_t classCode = tmpDword >> 8;
+					
+					printf("Bus %d Dev %d Fn %d -> %s [%04x:%04x]\n", bus, dev, fn, PCIGetClassName(classCode), vendorID, deviceID);			
+				}
+			}
 		}
 	}
 	printf("Scan done!\n");
@@ -57,3 +78,24 @@ int main(multiboot_t* mboot, uint32_t initialStack) {
 */
 	return 0xDEADBABA;
 }
+
+/*
+	printf("Scan PCI bus...\n");
+	uint32_t tmpDword = 0;
+	for (uint8_t bus = 0; bus < 256; bus++) {
+		for (uint8_t dev = 0; dev < 32; dev++) {
+			for (uint8_t fn = 0; fn < 8; fn++) {
+				PCIDirectRead(bus, dev, fn, 0x00, 4, &tmpDword);
+				uint16_t deviceID = (tmpDword >> 16)	& 0x0000FFFF;
+				uint16_t vendorID = (tmpDword >> 0)		& 0x0000FFFF; 
+				if (vendorID != 0xFFFF) {
+					//PCIDirectRead(bus, dev, fn, 0x08, 4, &tmpDword);
+					uint32_t classCode = 0;// tmpDword >> 8;
+					
+					printf("Bus %d Dev %d Fn %d -> %x [%x:%x]\n", bus, dev, fn, classCode, vendorID, deviceID);			
+				}
+			}
+		}
+	}
+	printf("Scan done!\n");
+*/

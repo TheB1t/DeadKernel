@@ -82,8 +82,8 @@ void screenPutString(char* c) {
 
 void printf(const char* format, ...) {
 	char** arg = (char**)&format;
-	int c;
-	char buf[20];
+	int c, num = 0;
+	char buf[20], sym = ' ';
 
 	arg++;
 
@@ -93,9 +93,9 @@ void printf(const char* format, ...) {
 		else {
 			char* p;
 			char* p2;
-			
+	
 			c = *format++;
-
+		back:
 			switch (c) {
 				case 'd':
 				case 'u':
@@ -110,12 +110,35 @@ void printf(const char* format, ...) {
 						p = "(null)";
 
 				string:
+					if (num) {
+						num -= strlen(p);
+						while (num--)
+							screenPutChar(sym);
+					}
 					while (*p)
 						screenPutChar(*p++);
+						
 					break;
 
-				default:
+				case 'c':
 					screenPutChar(*((int*) arg++));
+				
+				default:
+					if (*(format - 2) == '%') {
+						if (c == '0' || c == ' ') {
+							sym = c;
+							c = *format++;
+						}
+						num = 0;
+						while (c >= '1' && c <= '9') {
+							num *= 10;
+							num += c - '0';
+							c = *format++;
+						};
+						goto back;
+					} else {
+						screenPutChar(*((int*) arg++));
+					}
 					break;
 			}
 		}
