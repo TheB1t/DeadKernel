@@ -82,8 +82,8 @@ void screenPutString(char* c) {
 
 void printf(const char* format, ...) {
 	char** arg = (char**)&format;
-	int c, num = 0;
-	char buf[20], sym = ' ';
+	char c, num = 0, sym = ' ';
+	char buf[20];
 
 	arg++;
 
@@ -111,7 +111,7 @@ void printf(const char* format, ...) {
 
 				string:
 					if (num) {
-						num -= strlen(p);
+						num -= strlen(p) > num ? num : strlen(p);
 						while (num--)
 							screenPutChar(sym);
 					}
@@ -134,7 +134,7 @@ void printf(const char* format, ...) {
 							num *= 10;
 							num += c - '0';
 							c = *format++;
-						};
+						}
 						goto back;
 					} else {
 						screenPutChar(*((int*) arg++));
