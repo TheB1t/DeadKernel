@@ -109,7 +109,7 @@ uint8_t BIOS32CheckPCI(uint8_t* majorVer, uint8_t* minorVer, uint8_t* HWMech) {
 	return FAIL;
 }
 
-uint32_t PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t *value) {
+uint8_t PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t *value) {
     if (bus > 255 || dev > 31 || fn > 7 || reg > 255)
            return FAIL;
 
@@ -121,6 +121,34 @@ uint32_t PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_
 		default: return FAIL;
     }
 
+	return SUCC;
+}
+
+uint8_t PCIDirectWrite(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t value) {
+    if (bus > 255 || dev > 31 || fn > 7 || reg > 255)
+           return FAIL;
+
+	outl(0xCF8, PCI_CONF1_ADDRESS(bus, dev, fn, reg));
+	uint32_t data = inl(0xCFC);
+	
+	switch (len) {
+		case 1:
+			data &= ~0x000000FF;
+			data |= value & 0x000000FF;
+			break;
+		case 2:
+			data &= ~0x0000FFFF;
+			data |= value & 0x0000FFFF;
+			break;
+		case 4:
+			data &= ~0xFFFFFFFF;
+			data |= value & 0xFFFFFFFF;
+			break;
+		default: return FAIL;
+    }
+	outl(0xCF8, PCI_CONF1_ADDRESS(bus, dev, fn, reg));
+	outl(0xCFC, data);
+	
 	return SUCC;
 }
 
@@ -178,8 +206,8 @@ void PCIDirectScan(PCIDevice_t* devices) {
 }
 
 char* PCIGetClassName(uint32_t classCode) {
-	uint8_t baseClass = (classCode >> 16) & 0x000000FF;
-	uint8_t subClass = (classCode >> 8) & 0x000000FF;
+	uint8_t baseClass = (classCode >> 16) & 0xFF;
+	uint8_t subClass = (classCode >> 8) & 0xFF;
 	switch (baseClass) {
 		case 0x00:
 			switch (subClass) {
