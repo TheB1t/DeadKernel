@@ -109,104 +109,6 @@ uint8_t BIOS32CheckPCI(uint8_t* majorVer, uint8_t* minorVer, uint8_t* HWMech) {
 	return FAIL;
 }
 
-uint32_t PCIBIOSFindDevice(uint16_t vendor, uint16_t deviceID, uint16_t index, uint8_t* bus, uint8_t* dev, uint8_t* fn) {
-    uint16_t bx, ret;
-
-/*
-	EAX – запрашиваемая функция сервиса, в данном случае 0xB102.
-	ECX – код типа устройства.
-	EDX – код фирмы-изготовителя устройства.
-	ESI – индекс (порядковый номер) устройства заданного типа.
-	В регистр EDI занесем адрес точки входа в сервис.
-	В результате выполнения вызова в регистрах процессора будет находиться следующая информация:
-
-	BH – номер шины, к которой подключено устройство;
-	BL – номер устройства в старших пяти битах и номер функции в трёх младших;
-	AH – код возврата (может принимать значения BAD_VEN-DOR_ID, DEVICE_NOT_FOUND и SUCCESFUL).
-*/
-    asm volatile("		\
-    	cli;			\
-    	lcall *(%%edi);	\
-    	jc 1f;			\
-    	xor %%ah, %%ah;	\
-    	1:				\
-    	sti				"
-        : "=b" (bx), "=a" (ret)
-        : "1" (PCIBIOS_FIND_PCI_DEVICE), "c" (deviceID), "d" (vendor), "S" ((int32_t)index), "D" (&PCIBIOSIndirect)
-	);
-	
-    *bus	= (bx >> 8) & 0xFF;
-    *dev	= (bx & 0xFF) >> 3;
-    *fn		= bx & 0x3;
-    
-    return (uint32_t)(ret & 0xFF00) >> 8;
-}
-
-uint32_t PCIBIOSFindClass(uint32_t classCode, uint16_t index, PCIDevice_t* pd) {
-	uint16_t bx, ret;
-	
-    asm volatile("		\
-    	cli;			\
-    	lcall *(%%edi);	\
-    	jc 1f;			\
-    	xor %%ah, %%ah;	\
-    	1:				\
-    	sti				"
-        : "=b" (bx), "=a" (ret)
-        : "1" (PCIBIOS_FIND_PCI_CLASS_CODE), "c" (classCode), "S" ((int32_t)index), "D" (&PCIBIOSIndirect)
-	);
-
-    pd->bus	= (bx >> 8) & 0xFF;
-    pd->dev	= (bx & 0xFF) >> 3;
-    pd->fn	= bx & 0x3;
-    
-    return (uint32_t)(ret & 0xFF00) >> 8;
-}
-
-uint32_t PCIBIOSRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t* value) {
-	uint32_t bx, ret = 0;
-
-    if (bus > 255 || dev > 31 || fn > 7 || reg > 255)
-           return FAIL;
-
-/*
-	0xB108 – чтение байта;
-	0xB109 – чтение слова;
-	0xB10A – чтение двойного слова.
-
-	EAX – код функции;
-	BH – номер шины, к которой подключено устройство;
-	BL – номер устройства в старших пяти битах и номер функции в трёх младших битах;
-	DI – смещение в конфигурационном пространстве.
-*/
-	
-	bx = ((bus << 8) | (dev << 3) | fn);
-
-	uint32_t readFlags = 0;
-	switch (len) {
-		case 1: readFlags = PCIBIOS_READ_CONFIG_BYTE; break;
-		case 2: readFlags = PCIBIOS_READ_CONFIG_WORD; break;
-		case 4: readFlags = PCIBIOS_READ_CONFIG_DWORD; break;
-	}
-
-	if (!readFlags)
-		return FAIL;
-	
-	asm volatile("		\
-	   	cli;			\
-	   	lcall *(%%edi);	\
-	   	jc 1f;			\
-	   	xor %%ah, %%ah;	\
-	   	1:				\
-	   	sti				"
-		: "=c" (*value), "=a" (ret)
-		: "1" (readFlags), "b" (bx), "D" ((long)reg), "S" (&PCIBIOSIndirect)
-	);
-			
-    return (uint32_t)((ret & 0xFF00) >> 8);
-
-}
-
 uint32_t PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t *value) {
     if (bus > 255 || dev > 31 || fn > 7 || reg > 255)
            return FAIL;
@@ -222,23 +124,57 @@ uint32_t PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_
 	return SUCC;
 }
 
+uint16_t PCIGetVendorID(uint8_t bus, uint8_t dev, uint8_t fn) {
+	uint16_t vendorID = 0;
+	PCIDirectRead(bus, dev, fn, 0x02, 2, (uint32_t*)&vendorID);
+	return vendorID;
+}
+
+uint16_t PCIGetDeviceID(uint8_t bus, uint8_t dev, uint8_t fn) {
+	uint16_t deviceID = 0;
+	PCIDirectRead(bus, dev, fn, 0x00, 2, (uint32_t*)&deviceID);
+	return deviceID;
+}
+
+uint32_t PCIGetClassCode(uint8_t bus, uint8_t dev, uint8_t fn) {
+	uint32_t classCode = 0;
+	PCIDirectRead(bus, dev, fn, 0x08, 4, &classCode);
+	return classCode >> 8;
+}
+
 uint32_t PCIDirectFindClass(uint32_t classCode, PCIDevice_t* pd) {
-	uint8_t bus, dev, fn;
-    uint32_t configDword, code;
-    
     memset(pd, 0, sizeof(PCIDevice_t));
 
     for (uint8_t bus = 0; bus < 256; bus++) {
 		for (uint8_t dev = 0; dev < 32; dev++) {
 			for (uint8_t fn = 0; fn < 8; fn++) {
-				PCIDirectRead(bus, dev, fn, 0x08, 4, &configDword);
-				if ((configDword >> 8) == classCode)	
+				if (PCIGetClassCode(bus, dev, fn) == classCode)	
 					return SUCC;
 			}
 		}
 	}
 
     return FAIL;
+}
+
+void PCIDirectScan(PCIDevice_t* devices) {
+	PCIDevice_t* ptr = devices;
+	for (uint32_t bus = 0; bus < 256; bus++) {
+		for (uint32_t dev = 0; dev < 32; dev++) {
+			for (uint32_t fn = 0; fn < 8; fn++) {
+				uint16_t vendorID = PCIGetVendorID(bus, dev, fn);
+				if (vendorID != 0xFFFF) {
+					ptr->vendor	= vendorID;
+					ptr->device	= PCIGetDeviceID(bus, dev, fn);
+					ptr->class	= PCIGetClassCode(bus, dev, fn);
+					ptr->bus	= bus;
+					ptr->dev	= dev;
+					ptr->fn		= fn;
+					ptr++;
+				}
+			}
+		}
+	}
 }
 
 char* PCIGetClassName(uint32_t classCode) {

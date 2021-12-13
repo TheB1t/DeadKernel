@@ -52,11 +52,11 @@ uint8_t		BIOS32Find();
 uint32_t	BIOS32GetService(uint32_t service);
 uint8_t		BIOS32CheckPCI(uint8_t* majorVer, uint8_t* minorVer, uint8_t* HWMech);
 
-uint32_t	PCIBIOSFindDevice(uint16_t vendor, uint16_t deviceID, uint16_t index, uint8_t *bus, uint8_t *dev, uint8_t *fn);
-uint32_t	PCIBIOSFindClass(uint32_t classCode, uint16_t index, PCIDevice_t *pd);
-uint32_t	PCIBIOSRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t *value);
-
 uint32_t	PCIDirectRead(uint8_t bus, uint8_t dev, uint8_t fn, uint8_t reg, uint8_t len, uint32_t *value);
+uint16_t	PCIGetVendorID(uint8_t bus, uint8_t dev, uint8_t fn);
+uint16_t	PCIGetDeviceID(uint8_t bus, uint8_t dev, uint8_t fn);
+uint32_t	PCIGetClassCode(uint8_t bus, uint8_t dev, uint8_t fn);
 uint32_t	PCIDirectFindClass(uint32_t classCode, PCIDevice_t *pd);
+void		PCIDirectScan(PCIDevice_t* devices);
 
 char*		PCIGetClassName(uint32_t classCode);

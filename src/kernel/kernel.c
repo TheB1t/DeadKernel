@@ -8,7 +8,7 @@
 #include "syscall.h"
 #include "pci.h"
 
-int kernel_main() {
+int32_t kernel_main() {
 	initSysTimer(50);
 	initPaging();
 
@@ -26,22 +26,18 @@ int kernel_main() {
 	}
 	
 	printf("Scan PCI bus...\n");
-	uint32_t tmpDword = 0;
-	for (uint32_t bus = 0; bus < 256; bus++) {
-		for (uint32_t dev = 0; dev < 32; dev++) {
-			for (uint32_t fn = 0; fn < 8; fn++) {
-				PCIDirectRead(bus, dev, fn, 0x00, 4, &tmpDword);
-				uint16_t deviceID = (tmpDword >> 16)	& 0xFFFF;
-				uint16_t vendorID = (tmpDword >> 0)		& 0xFFFF; 
-				if (vendorID != 0xFFFF) {
-					PCIDirectRead(bus, dev, 0, 0x08, 4, &tmpDword);
-					uint32_t classCode = tmpDword >> 8;
-					
-					printf("%03d:%02d:%01d -> [%04x:%04x] %s\n", bus, dev, fn, vendorID, deviceID, PCIGetClassName(classCode));			
-				}
-			}
-		}
+	PCIDevice_t devices[256];
+	memset(devices, 0, sizeof(PCIDevice_t) * 256);
+
+	PCIDirectScan(devices);
+
+	PCIDevice_t* device = devices;
+	while (device->vendor) {
+		if (device->fn == 0)
+			printf("%03d:%02d:%01d -> [%04x:%04x] %s\n", device->bus, device->dev, device->fn, device->vendor, device->device, PCIGetClassName(device->class));			
+		device++;
 	}
+	
 	printf("Scan done!\n");
 	initTasking();		
 
