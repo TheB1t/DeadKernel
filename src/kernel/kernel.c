@@ -7,6 +7,7 @@
 #include "task.h"
 #include "syscall.h"
 #include "pci.h"
+#include "pci_ids.h"
 
 int32_t kernel_main() {
 	initSysTimer(50);
@@ -33,8 +34,12 @@ int32_t kernel_main() {
 
 	PCIDevice_t* device = devices;
 	while (device->vendor) {
-		if (device->fn == 0)
-			printf("%03d:%02d:%01d -> [%04x:%04x] %s\n", device->bus, device->dev, device->fn, device->vendor, device->device, PCIGetClassName(device->class));			
+		if (device->fn == 0) {
+			printf("Bus %03d Device %02d Function %01d\n", device->bus, device->dev, device->fn);	
+			printf("	Class  [%06x] %s\n",	device->class,	PCIGetClassName(device->class));
+			printf("	Vendor [%04x] %s\n",	device->vendor,	PCIGetVendorName(device->vendor));
+			printf("	Device [%04x]\n",		device->device);
+		}
 		device++;
 	}
 	

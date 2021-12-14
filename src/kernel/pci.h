@@ -16,7 +16,7 @@
 #define SUCC							0x01
 #define FAIL							0x00
 
-#define PCI_CONF1_ADDRESS(bus, dev, fn, reg) ((uint32_t)0x80000000 | ((uint32_t)(bus) << 16) | ((uint32_t)(dev) << 11) | ((uint32_t)(fn) << 8) | ((uint32_t)(reg)))
+#define PCI_CONF1_ADDRESS(bus, dev, fn, reg) ((uint32_t)0x80000000 | ((uint32_t)(bus) << 16) | ((uint32_t)(dev) << 11) | ((uint32_t)(fn) << 8) | ((uint32_t)(reg) & 0xFC))
 
 #define PCI_SUCC						0x00
 #define PCI_NOT_SUPPORTED				0x81
@@ -59,5 +59,3 @@ uint16_t	PCIGetDeviceID(uint8_t bus, uint8_t dev, uint8_t fn);
 uint32_t	PCIGetClassCode(uint8_t bus, uint8_t dev, uint8_t fn);
 uint32_t	PCIDirectFindClass(uint32_t classCode, PCIDevice_t *pd);
 void		PCIDirectScan(PCIDevice_t* devices);
-
-char*		PCIGetClassName(uint32_t classCode);
