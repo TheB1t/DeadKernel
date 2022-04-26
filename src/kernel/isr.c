@@ -13,10 +13,8 @@ void ISRHandler(registers_t regs) {
 }
 
 void IRQHandler(registers_t regs) {
-	if (regs.int_no >= 40) {
+	if (regs.int_no >= 40)
 		outb(0xA0, 0x20);
-	}
-
 	outb(0x20, 0x20);
 
 	if (interruptHandlers[regs.int_no] != 0) {
@@ -27,4 +25,8 @@ void IRQHandler(registers_t regs) {
 
 void registerInterruptHandler(uint8_t n, ISR_t handler) {
 	interruptHandlers[n] = handler;
+}
+
+void unregisterInterruptHandler(uint8_t n) {
+	interruptHandlers[n] = 0;
 }

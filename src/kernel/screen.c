@@ -1,6 +1,6 @@
 #include "screen.h"
 
-static screenChar* framebuffer = (screenChar*)0xB8000; 
+static screenChar*	framebuffer = (screenChar*)0xB8000; 
 
 Vector2_32_t cursor			= { .x = 0, .y = 0 };
 screenColor currentColor	= { .foreground = 15, .background = 0 };
@@ -16,13 +16,11 @@ static void moveCursor() {
 
 static void scroll() {
 	if (cursor.y >= SCREEN_HEIGHT) {
-		for (uint32_t i = 0 * SCREEN_WIDTH; i < (SCREEN_HEIGHT - 1) * SCREEN_WIDTH; i++) {
+		for (uint32_t i = 0 * SCREEN_WIDTH; i < (SCREEN_HEIGHT - 1) * SCREEN_WIDTH; i++)
 			framebuffer[i] = framebuffer[i + SCREEN_WIDTH];
-		}
 
-		for (uint32_t i = (SCREEN_HEIGHT - 1) * SCREEN_WIDTH; i < SCREEN_HEIGHT * SCREEN_WIDTH; i++) {
+		for (uint32_t i = (SCREEN_HEIGHT - 1) * SCREEN_WIDTH; i < SCREEN_HEIGHT * SCREEN_WIDTH; i++)
 			framebuffer[i] = blank;
-		}
 
 		cursor.y = SCREEN_HEIGHT - 1;
 	}
@@ -65,19 +63,17 @@ void screenPutChar(char c) {
 }
 
 void screenClear() {
-	for (uint32_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
+	for (uint32_t i = 0; i < SCREEN_WIDTH * SCREEN_HEIGHT; i++)
 		framebuffer[i] = blank;
-	}
-
+		
 	cursor.x = 0;
 	cursor.y = 0;
 	moveCursor();
 }
 
 void screenPutString(char* c) {
-	while (*c) {
+	while (*c)
 		screenPutChar(*c++);
-	}
 }
 
 void printf(const char* format, ...) {

@@ -1,6 +1,13 @@
 #include "common.h"
 #include "screen.h"
 
+typedef struct StackFrame {
+	struct StackFrame*	ebp;
+	uint32_t			eip;
+} StackFrame_t;
+
+extern uint32_t walkStack(uint32_t* addr, uint32_t max);
+
 void outb(uint16_t port, uint8_t value) {
 	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
 }
@@ -78,9 +85,7 @@ char *strcat(char* dest, const char* src) {
 
 void itoa(char* result, uint32_t base, int32_t value) {
     // check that the base if valid
-    if (base < 2 || base > 36) {
-        *result = '\0';
-    }
+    if (base < 2 || base > 36) *result = '\0';
 
     char *ptr = result, *ptr1 = result, tmp_char;
     int tmp_value;
@@ -101,15 +106,24 @@ void itoa(char* result, uint32_t base, int32_t value) {
     }
 }
 
-void kernel_panic(const char* message, const char* file, uint32_t line) {
+void stack_trace() {
+	uint32_t addrList[8];
+	uint32_t sz = walkStack(addrList, sizeof(addrList));
+	printf("Stack trace:\n");
+	for (uint32_t i = 0; i < sz; i++)
+		printf(" 0x%08x\n", addrList[i]);
+}
+
+void kernel_panic(const char* message, const char* file, uint32_t line, const char* func) {
 	asm volatile ("cli");
-	printf("Kernel Panic - %s (%s:%d)", message, file, line);
+	stack_trace();
+	printf("Kernel Panic - %s (%s:%d) in function %s\n", message, file, line, func);
 	for(;;);
 }
 
-void kernel_assert(const char* message, const char* file, uint32_t line) {
+void kernel_assert(const char* message, const char* file, uint32_t line, const char* func) {
 	asm volatile ("cli");
-	printf("Assertion Failed - %s (%s:%d)", message, file, line);
+	stack_trace();
+	printf("Assertion Failed - %s (%s:%d) in function %s\n", message, file, line, func);
 	for(;;);
 }
-

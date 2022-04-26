@@ -1,6 +1,6 @@
 MAIN			= boot.o main.o kernel.o
 INTERRUPTS		= descriptor_tables.o descriptor_tables_asm.o interrupts.o isr.o
-UTILS			= common.o screen.o
+UTILS			= common.o common_asm.o screen.o
 MEM_MANAGMENT	= kheap.o paging.o
 SYS_CLOCKS		= systimer.o
 TASKING			= process.o task.o syscall.o

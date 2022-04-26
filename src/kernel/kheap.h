@@ -22,10 +22,10 @@ typedef	struct {
 	struct	list_head	list;
 } HeapChunk_t;
 
-Heap_t* createHeap(uint32_t placementAddr, uint32_t start, uint32_t end, uint32_t max, uint8_t supervisor, uint8_t readonly);
-void*	alloc(uint32_t size, Heap_t* heap);
-void*	palignedAlloc(uint32_t size, Heap_t* heap);
-void	free(void* p, Heap_t* heap);
+Heap_t*		createHeap(uint32_t placementAddr, uint32_t start, uint32_t end, uint32_t max, uint8_t supervisor, uint8_t readonly);
+void*		alloc(uint32_t size, Heap_t* heap);
+void*		palignedAlloc(uint32_t size, Heap_t* heap);
+void		free(void* p, Heap_t* heap);
 
 uint32_t	_kmalloc(uint32_t size, uint8_t align, uint32_t* phys);
 uint32_t	kmalloc(uint32_t size);

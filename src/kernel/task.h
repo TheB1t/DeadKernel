@@ -16,9 +16,9 @@ typedef struct task {
 	struct task*	next;
 } Task_t;
 
-void initTasking();
-void taskSwitch();
-int32_t fork();
-void moveStack(void* newStackStart, uint32_t size);
-int32_t getPID();
-void switchToUserMode();
+void	initTasking();
+void	taskSwitch();
+int32_t	fork();
+void	moveStack(void* newStackStart, uint32_t size);
+int32_t	getPID();
+void	switchToUserMode();

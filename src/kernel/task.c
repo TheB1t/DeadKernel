@@ -1,14 +1,15 @@
 #include "task.h"
 
-volatile Task_t* currentTask;
-volatile Task_t* readyQueue;
+volatile Task_t*	currentTask;
+volatile Task_t*	readyQueue;
 
-extern PageDir_t* kernelDir;
-extern PageDir_t* currentDir;
-extern void allocFrame(Page_t*, uint32_t, uint32_t);
-extern void taskWakeup(uint32_t, uint32_t, uint32_t, uint32_t);
-extern uint32_t initialESP;
-extern uint32_t readEIP();
+extern	PageDir_t*	kernelDir;
+extern	PageDir_t*	currentDir;
+extern	uint32_t	initialESP;
+
+extern	void		allocFrame(Page_t*, uint32_t, uint32_t);
+extern	void		taskWakeup(uint32_t, uint32_t, uint32_t, uint32_t);
+extern	uint32_t	readEIP();
 
 uint32_t nextPID = 1;
 

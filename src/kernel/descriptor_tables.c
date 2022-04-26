@@ -1,9 +1,9 @@
 #include "descriptor_tables.h"
 
 
-#define pack_access(Type, DT, DPL, P) ((((0x00 | (Type & 0b1111)) | (DT & 0b1) << 4) | (DPL & 0b11) << 5) | (P & 0b1) << 7)
-#define pack_granularity(A, D, G) (((0x00 | (A & 0b1) << 4) | (D & 0b1) << 6) | (G & 0b1) << 7)
-#define pack_flags(P, DPL) ((((0x00 | 0b01110)) | (DPL & 0b11) << 5) | (P & 0b1) << 7)
+#define pack_access(Type, DT, DPL, P)	((((0x00 | (Type & 0b1111)) | (DT & 0b1) << 4) | (DPL & 0b11) << 5) | (P & 0b1) << 7)
+#define pack_granularity(A, D, G)		(((0x00 | (A & 0b1) << 4) | (D & 0b1) << 6) | (G & 0b1) << 7)
+#define pack_flags(P, DPL)				((((0x00 | 0b01110)) | (DPL & 0b11) << 5) | (P & 0b1) << 7)
 
 //Global Description Table
 #define GDT_ENTRIES_SIZE 6
@@ -27,7 +27,7 @@ extern void IDTFlush(uint32_t);
 static void InitIDT();
 static void IDTSetGate(uint8_t, uint32_t, uint16_t, uint8_t);
 
-
+//Task State Segment 0
 TSSEntry_t	TSSEntry0;
 
 extern void TSSFlush();

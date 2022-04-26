@@ -42,13 +42,13 @@ int32_t kernel_main() {
 		}
 		device++;
 	}
-	
+
 	printf("Scan done!\n");
 	initTasking();		
 
 	initSysCalls();
 	switchToUserMode();
 
-	syscall_screenPutString("Welcome to the fucking user-mode asshole!\n");
+	syscall_screenPutString("Welcome to user-mode!\n");
 	return 0xDEADBABA;
 }

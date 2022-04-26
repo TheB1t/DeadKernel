@@ -2,16 +2,11 @@
 #include "common.h"
 #include "screen.h"
 #include "descriptor_tables.h"
-#include "systimer.h"
-#include "paging.h"
-#include "kheap.h"
-#include "task.h"
-#include "syscall.h"
-#include "pci.h"
 
-extern uint32_t placementAddress;
-extern int32_t kernel_main();
-uint32_t initialESP;
+uint32_t		initialESP;
+
+extern uint32_t	placementAddress;
+extern int32_t	kernel_main();
 
 int32_t main(multiboot_t* mboot, uint32_t initialStack) {
 	initialESP = initialStack;

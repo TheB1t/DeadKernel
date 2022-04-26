@@ -11,26 +11,25 @@
 #define READ_FRAME(a)		(frames[INDEX_FROM_BIT(ADDR2FRAME(a))] & (0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a))))
 
 
-PageDir_t* kernelDir = 0;
-PageDir_t* currentDir = 0;
+PageDir_t*	kernelDir = 0;
+PageDir_t*	currentDir = 0;
 
-uint32_t* frames;
-uint32_t nframes;
+uint32_t*	frames;
+uint32_t	nframes;
 
-//extern void copyPagePhysical(uint32_t, uint32_t);
-extern uint32_t placementAddress;
-extern Heap_t* kernelHeap;
-
-extern void copyPagePhysical(uint32_t, uint32_t);
+extern uint32_t	placementAddress;
+extern Heap_t*	kernelHeap;
+extern void		copyPagePhysical(uint32_t, uint32_t);
 
 static uint32_t firstFrame() {
 	for (uint32_t i = 0; i < INDEX_FROM_BIT(nframes); i++) {
-		if (frames[i] != 0xFFFFFFFF)
-			for (uint32_t j = 0; j < 32; j++) {
-				uint32_t toTest = 0x1 << j;
-				if (!(frames[i] & toTest))
-					return (i * 32) + j;
-			}
+		if (frames[i] == 0xFFFFFFFF)
+			continue;
+
+		for (uint32_t j = 0; j < 32; j++) {
+			if (!(frames[i] & (0x1 << j))) 
+				return (i * 32) + j;
+		}
 	}
 }
 

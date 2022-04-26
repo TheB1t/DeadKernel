@@ -2244,7 +2244,7 @@ const char* PCIGetVendorName(uint16_t vendorID) {
 	    case 0x270f: return "Chaintech Computer Co. Ltd";
 	    case 0x2711: return "AVID Technology Inc.";
 	    case 0x2955: return "Connectix Virtual PC";
-	    case 0x2a15: return "3D Vision(???)";
+	    case 0x2a15: return "3D Vision(?)";
 	    case 0x2a18: return "Video Transcode Controller";
 	    case 0x2bd8: return "ROPEX Industrie-Elektronik GmbH";
 	    case 0x3000: return "Hansol Electronics Inc.";

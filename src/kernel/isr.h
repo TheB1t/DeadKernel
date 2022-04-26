@@ -21,11 +21,13 @@
 #define IRQ15 47
 
 typedef struct {
-   uint32_t ds;
-   uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-   uint32_t int_no, err_code;
-   uint32_t eip, cs, eflags, useresp, ss;
+	uint32_t	ds;
+	uint32_t	edi, esi, ebp, esp, ebx, edx, ecx, eax;
+	uint32_t	int_no, err_code;
+	uint32_t	eip, cs, eflags, useresp, ss;
 } registers_t;
 
 typedef void (*ISR_t)(registers_t);
-void registerInterruptHandler(uint8_t n, ISR_t handler);
+
+void	registerInterruptHandler(uint8_t n, ISR_t handler);
+void	unregisterInterruptHandler(uint8_t n);

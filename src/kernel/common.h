@@ -7,12 +7,12 @@ typedef			 short	int16_t;
 typedef	unsigned char	uint8_t;
 typedef 		 char	int8_t;
 
-#define PANIC(msg)	kernel_panic(msg, __FILE__, __LINE__)
-#define ASSERT(b)	((b) ? (void)0 : kernel_assert(#b, __FILE__, __LINE__))
+#define PANIC(msg)	kernel_panic(msg, __FILE__, __LINE__, __FUNCTION__)
+#define ASSERT(b)	((b) ? (void)0 : kernel_assert(#b, __FILE__, __LINE__, __FUNCTION__))
 
 typedef struct {
-	uint32_t x;
-	uint32_t y;
+	uint32_t	x;
+	uint32_t	y;
 } Vector2_32_t;
 
 
@@ -22,13 +22,16 @@ void		outl(uint16_t port, uint32_t value);
 uint8_t		inb(uint16_t port);
 uint16_t	inw(uint16_t port);
 uint32_t	inl(uint16_t port);
+
 void 		memcpy(void* dest, const void* src, uint32_t len);
 void 		memset(void* dest, uint8_t val, uint32_t len);
+
 int			strlen(const char* str);
 int 		strcmp(const char* str1, const char* str2);
 char*		strcpy(char* dest, const char* src);
 char*		strcat(char* dest, const char* src);
+
 void		itoa(char* result, uint32_t base, int32_t value);
 
-void		kernel_panic(const char* message, const char* file, uint32_t line);
-void		kernel_assert(const char* message, const char* file, uint32_t line);
+void		kernel_panic(const char* message, const char* file, uint32_t line, const char* func);
+void		kernel_assert(const char* message, const char* file, uint32_t line, const char* func);
