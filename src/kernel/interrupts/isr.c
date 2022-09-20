@@ -1,9 +1,8 @@
 #include "isr.h"
 
-uint32_t interruptedEIP;
-ISR_t interruptHandlers[256];
+InterruptHandler_t interruptHandlers[256];
 
-uint8_t* getISRName(uint32_t i) {
+uint8_t* getInterruptName(uint32_t i) {
 	switch (i) {
 		case 0: return "Division by zero exception";
 		case 1: return "Debug exception";
@@ -24,33 +23,35 @@ uint8_t* getISRName(uint32_t i) {
 		case 16: return "Coprocessor fault";
 		case 17: return "Alignment check exception";
 		case 18: return "Machine check exception";
+
+		case 32: return "System timer interrupt";
+
+		case 64: return "Yielding";
+		case 128: return "System call";
+
 		default: return "Unknown exception";
 	}
 }
 
-void ISRHandler(registers_t regs) {
-	interruptedEIP = regs.eip;
-	if (interruptHandlers[regs.int_no] != 0) {
-		interruptHandlers[regs.int_no](regs);
-	} else {
-		uint8_t* name = getISRName(regs.int_no);
+void MainInterruptHandler(uint32_t int_no, uint32_t err_code, CPURegisters_t* regs) {
+	//printf("%s at address 0x%08x\n", getInterruptName(int_no), regs->eip);
+	if (int_no >= 32 && int_no <= 47) {
+		if (int_no >= 40)
+			outb(0xA0, 0x20);
+
+		outb(0x20, 0x20);
+	}
+
+	if (interruptHandlers[int_no] != 0) {
+		interruptHandlers[int_no](regs, err_code);
+	} else if (int_no >= 0 && int_no <= 18) {
+		uint8_t* name = getInterruptName(int_no);
 		printf("Unhandled interrupt: %s\n", name);
 		PANIC(name);
 	}
 }
 
-void IRQHandler(registers_t regs) {
-	interruptedEIP = regs.eip;
-	if (regs.int_no >= 40)
-		outb(0xA0, 0x20);
-
-	outb(0x20, 0x20);
-
-	if (interruptHandlers[regs.int_no] != 0)
-		interruptHandlers[regs.int_no](regs);
-}
-
-void registerInterruptHandler(uint8_t n, ISR_t handler) {
+void registerInterruptHandler(uint8_t n, InterruptHandler_t handler) {
 	interruptHandlers[n] = handler;
 }
 

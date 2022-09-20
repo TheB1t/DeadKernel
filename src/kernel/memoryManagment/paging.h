@@ -37,5 +37,5 @@ void allocFrames(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKern
 void initPaging();
 PageDir_t* switchPageDir(PageDir_t* dir);
 Page_t* getPage(uint32_t address, uint8_t make, PageDir_t* dir);
-void pageFault(registers_t regs);
+void pageFault(CPURegisters_t* regs, uint32_t err_code);
 PageDir_t* cloneDir(PageDir_t* src);

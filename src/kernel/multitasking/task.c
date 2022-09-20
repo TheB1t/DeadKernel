@@ -23,25 +23,13 @@ uint32_t getStackBegin() {
 }
 
 void taskHalted(uint32_t returnValue) {
-	if (queue) {
+	if (currentTask) {
 		currentTask->status = TS_FINISHED;
-		//asm volatile("sti");
 		printf("PID %d exit with code 0x%08x\n", currentTask->id, returnValue);
 	}
 }
 
 extern void loadEntry();
-/*
-void loadEntry() {
-	int32_t (*entry)() = (int32_t (*)())currentTask->entry;
-	int32_t returnValue = entry();
-
-	currentTask->status = TS_FINISHED;
-	printf("PID %d exit with code 0x%08x\n", currentTask->id, returnValue);
-//	asm volatile("sti");
-	for(;;);
-}
-*/
 
 void createStack(uint32_t newStart, uint32_t size) {
 	for (uint32_t i = newStart; i >= newStart - size; i -= PAGE_SIZE)
@@ -86,30 +74,40 @@ void moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size) {
 	asm volatile("mov %0, %%ebp" : : "r" (ebp));
 }
 
+void switchTaskInterrupt(CPURegisters_t* regs, uint32_t err_code) {
+	switchTask(regs);
+}
+
 void initTasking() {
 	asm volatile("cli");
 	
 	moveStack(getStackBegin(), 0xE0000000, 0x2000);
 
-	queue					= (Task_t*)kmalloc(sizeof(Task_t));
+	queue						= (Task_t*)kmalloc(sizeof(Task_t));
 	memset((uint8_t*)queue, 0, sizeof(Task_t));
 	
 	currentTask					= queue;
 	currentTask->id				= nextPID++;
 	currentTask->pageDir		= currentDir;
-	currentTask->kernelStack	= 0;//_kmalloc(KERNEL_STACK_SIZE, 1, 0);
+	currentTask->kernelStack	= _kmalloc(KERNEL_STACK_SIZE, 1, 0);
 	currentTask->status			= TS_IDLE;
 
-	registerInterruptHandler(64, &switchTask);
+	currentTask->regs.cr3		= currentDir->physicalAddr;
+	currentTask->regs.eflags	= 0x200;
+	asm volatile("				\
+				  mov %%cs, %0;	\
+				  mov %%ds, %1;	\
+				":"=r" (currentTask->regs.cs),
+				  "=r" (currentTask->regs.ds));
+
+	registerInterruptHandler(64, &switchTaskInterrupt);
 	asm volatile("sti");
 }
 
-extern void saveContext(TaskRegisters_t*);
-extern void loadContext(TaskRegisters_t*);
-void switchContext(Task_t* from, Task_t* to, uint32_t physicalAddr) {
-	saveContext(&from->regs);
-	loadContext(&to->regs);
-	asm volatile("mov %0, %%cr3" : : "r" (physicalAddr));
+void switchContext(CPURegisters_t* regs, Task_t* from, Task_t* to) {
+	memcpy(&from->regs, regs, sizeof(CPURegisters_t));
+
+	memcpy(regs, &to->regs, sizeof(CPURegisters_t));
 }
 
 void yield() {
@@ -117,7 +115,7 @@ void yield() {
 	asm volatile("int $0x40");
 }
 
-void switchTask() {	
+void switchTask(CPURegisters_t* regs) {
 	if (!currentTask)
 		return;
 
@@ -151,10 +149,11 @@ void switchTask() {
 		currentTask = currentTask->next ? currentTask->next : queue;
 	}
 
-	currentDir = currentTask->pageDir;
+	//if (currentTask == tempTask)
+	//	return;
 
 	setKernelStack(currentTask->kernelStack + KERNEL_STACK_SIZE);
-	switchContext(tempTask, currentTask, currentDir->physicalAddr);
+	switchContext(regs, tempTask, currentTask);
 }
 
 Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
@@ -165,16 +164,21 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
 	Task_t* newTask			= (Task_t*)kmalloc(sizeof(Task_t));
 	memset((uint8_t*)newTask, 0, sizeof(Task_t));
 	newTask->pageDir		= clonedDir;
-	newTask->kernelStack	= queue->kernelStack;//_kmalloc(KERNEL_STACK_SIZE, 1, 0);
+	newTask->kernelStack	= currentTask->kernelStack;//_kmalloc(KERNEL_STACK_SIZE, 1, 0);
 	newTask->status			= TS_IDLE;
 	newTask->regs.eax		= hdr->entry;
 	newTask->regs.eip		= (uint32_t)loadEntry;
 	newTask->regs.esp		= BASE_PROCESS_ESP;
 	newTask->regs.ebp		= BASE_PROCESS_EBP;
 
+	newTask->regs.cr3		= clonedDir->physicalAddr;
+	newTask->regs.cs		= currentTask->regs.cs;
+	newTask->regs.ds		= currentTask->regs.ds;
+	newTask->regs.eflags	= 0x200;
+
 	PageDir_t* savedDir = switchPageDir(clonedDir);
-		
-//	createStack(BASE_PROCESS_ESP, PROCESS_STACK_SIZE);
+
+	createStack(BASE_PROCESS_ESP, PROCESS_STACK_SIZE);
 	
 	for (uint32_t i = 0; i < hdr->phnum; i++) {
 		ELF32ProgramHeader_t* ph = ELFProgram(hdr, i);
@@ -191,6 +195,9 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
 }
 
 int32_t runTask(Task_t* task) {
+	if (task->status == TS_FINISHED)
+		return -1;
+
 	asm volatile("cli");
 	
 	task->id = task->id ? task->id : nextPID++;

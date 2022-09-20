@@ -175,17 +175,22 @@ void initPaging() {
 
 	uint32_t kheap_addr = kmalloc(sizeof(Heap_t));
 
-	//Allocating top memory
-	allocFramesMirrored(0, (uint32_t)&start, 1, 0, 0);
-	
-	//Allocating kernel sections
-	allocKernelSectionByName(".text");
-	allocKernelSectionByName(".data");
-	allocKernelSectionByName(".bss");
-	allocKernelSectionByName(".symtab");
-	allocKernelSectionByName(".strtab");
-	allocKernelSectionByName(".shstrtab");
-
+	//If section table loaded
+	if (isKernelSectionTableLoaded()) {
+		//Allocating top memory
+		allocFramesMirrored(0, (uint32_t)&start, 1, 0, 0);
+		
+		//Allocating kernel sections
+		allocKernelSectionByName(".text");
+		allocKernelSectionByName(".data");
+		allocKernelSectionByName(".bss");
+		allocKernelSectionByName(".symtab");
+		allocKernelSectionByName(".strtab");
+		allocKernelSectionByName(".shstrtab");
+	} else {
+		//Else, alloc all memory from zero to placementAddress
+		allocFramesMirrored(0, placementAddress, 1, 0, 0);
+	}
 	//Page allocation for memory allocated before page mode was enabled
 	allocFramesMirrored((uint32_t)&end, placementAddress + PAGE_SIZE, 1, 0, 0);
 
@@ -237,25 +242,25 @@ Page_t* getPage(uint32_t address, uint8_t make, PageDir_t* dir) {
 /*
  *	Page fault interrupt handler
  */
-void pageFault(registers_t regs) {
+void pageFault(CPURegisters_t* regs, uint32_t err_code) {
     uint32_t faultingAddress;
     asm volatile ("mov %%cr2, %0" : "=r" (faultingAddress));
 
     char* err = "Unknown error";
     
-    if (!(regs.err_code & 0x1)) 
+    if (!(err_code & 0x1)) 
     	err = "Page not present";
     	
-    if (regs.err_code & 0x2)
+    if (err_code & 0x2)
     	err = "Page is read-only";
     	
-    if (regs.err_code & 0x4)
+    if (err_code & 0x4)
     	err = "Processor in user-mode";
     	 
-    if (regs.err_code & 0x8)
+    if (err_code & 0x8)
     	err = "Overwrite CPU-reserved bits";
 
-	FPRINTF("Page fault [0x%x] %s (eip 0x%08x)\n", faultingAddress, err, regs.eip);
+	FPRINTF("Page fault [0x%x] %s (eip 0x%08x)\n", faultingAddress, err, regs->eip);
     PANIC("Page fault");	
 }
 

@@ -4,6 +4,7 @@
 #include "kheap.h"
 #include "paging.h"
 #include "descriptor_tables.h"
+#include "isr.h"
 #include "elf.h"
 
 #define KERNEL_STACK_SIZE (2048)
@@ -18,22 +19,9 @@ typedef enum {
 	TS_FINISHED	= 2,
 	TS_YIELD	= 3
 } Status_t;
-
-typedef struct {
-	uint32_t	edi;	//0
-	uint32_t	esi;	//4
-	uint32_t	ebp;	//8
-	uint32_t	esp;	//12
-	uint32_t	ebx;	//16
-	uint32_t	edx;	//20
-	uint32_t	ecx;	//24
-	uint32_t	eax;	//28
-	uint32_t	eflags; //32
-	uint32_t	eip;	//36
-} TaskRegisters_t;		//40 BYTES TOTAL
 		
 typedef struct task {
-	TaskRegisters_t	regs;			//0
+	CPURegisters_t	regs;			//0
 	int32_t			id;				//40
 	PageDir_t*		pageDir;		//44
 	Status_t		status;			//48
@@ -45,7 +33,7 @@ typedef struct task {
 
 void		initTasking();
 void		yield();
-void		switchTask();
+void		switchTask(CPURegisters_t* regs);
 int32_t		runTask(Task_t* task);
 Task_t*		stopTask(Task_t* task);
 Task_t*		createTask(uint32_t esp, uint32_t ebp, uint32_t entry, PageDir_t* dir);

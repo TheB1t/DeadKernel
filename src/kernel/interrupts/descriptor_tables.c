@@ -33,12 +33,12 @@ TSSEntry_t	TSSEntry0;
 extern void TSSFlush();
 static void writeTSS(int32_t, uint16_t, uint32_t);
 
-extern ISR_t interruptHandlers[];
+extern InterruptHandler_t interruptHandlers[];
 
 void initDescriptorTables() {
 	InitGDT();
 	InitIDT();
-	memset(&interruptHandlers, 0, sizeof(ISR_t) * IDT_ENTRIES_SIZE);
+	memset(&interruptHandlers, 0, sizeof(InterruptHandler_t) * IDT_ENTRIES_SIZE);
 	asm volatile ("sti");
 }
 

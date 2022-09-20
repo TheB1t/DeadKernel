@@ -31,16 +31,13 @@ copyPagePhysical:
 	popf
 	pop ebx	
 	ret
-	
+
 [EXTERN taskHalted]
 [GLOBAL loadEntry]
 loadEntry:
-	sub esp, 8
-	
-	xor ebp, ebp
 	push ebp
 	mov ebp, esp
-
+	
 	call eax
 	push eax
 	call taskHalted

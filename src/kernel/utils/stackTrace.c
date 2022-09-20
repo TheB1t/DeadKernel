@@ -1,8 +1,12 @@
 #include "stackTrace.h"
 
-KernelSectionHeader_t* kernelSectionTable;
-uint32_t sectionStringTableIndex;
-uint32_t sectionTableSize;
+KernelSectionHeader_t* kernelSectionTable = 0;
+uint32_t sectionStringTableIndex = 0;
+uint32_t sectionTableSize = 0;
+
+uint8_t isKernelSectionTableLoaded() {
+	return kernelSectionTable != NULL;
+}
 
 KernelSectionHeader_t* kernelSection(uint32_t idx) {
 	return &kernelSectionTable[idx];
@@ -13,6 +17,9 @@ uint8_t* kernelLookupString(uint32_t offset) {
 }
 
 KernelSectionHeader_t* kernelLookupSectionByName(char* name) {
+	if (!isKernelSectionTableLoaded())
+		return NULL;
+		
 	for (uint32_t i = 0; i < sectionTableSize; i++) {
 		KernelSectionHeader_t* section = kernelSection(i);
 		if (strcmp(kernelLookupString(section->name), name))
@@ -74,27 +81,30 @@ typedef struct stackFrame {
 	uint32_t eip;
 } stackFrame_t;
 
-extern uint32_t InterruptEIP;
+//extern uint32_t InterruptEIP;
 
 void printStackFrame(uint32_t address) {
     uint32_t nearestAddress = kernelGetNearestSymbolByAddress(address);
-	uint8_t* name = kernelGetSymbolNameByAddress(nearestAddress);
-		    	
-	printf("	0x%08x -> %16s at address 0x%08x\n", address, name, nearestAddress);
+
+    if (nearestAddress) {
+		uint8_t* name = kernelGetSymbolNameByAddress(nearestAddress);
 	
-    if (!strcmp(name, "ISRCommonStub") || !strcmp(name, "IRQCommonStub"))
-		printStackFrame(InterruptEIP);	
+		printf("	0x%08x -> %16s at address 0x%08x\n", address, name, nearestAddress);
+	
+    	//if (!strcmp(name, "ISRCommonStub") || !strcmp(name, "IRQCommonStub"))
+		//	printStackFrame(InterruptEIP);	
+	} else {
+		printf("	0x%08x\n", address);
+	}
 }
 
 void stackTrace(uint32_t maxFrames) {
-	uint8_t interruptParsed = 0;
-	
     stackFrame_t* stk;
     __asm__ volatile("movl %%ebp, %0" : "=r"(stk));
     
     printf("--[[		Stack trace begin		]]--\n");
     
-    for(uint32_t frame = 0; stk && frame < maxFrames; ++frame) {
+    for(uint32_t frame = 0; frame < maxFrames; ++frame) {
 		printStackFrame(stk->eip);
         stk = stk->ebp;
     }

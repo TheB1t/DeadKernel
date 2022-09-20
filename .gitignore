@@ -1,4 +1,4 @@
 *.o
-*.vmdk
-*.img
 *.sh
+bx_enh_dbg.ini
+.vscode/

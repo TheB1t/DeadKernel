@@ -13,6 +13,9 @@ ALLFILES := $(SRCFILES) $(HDRFILES) $(ASMFILES) $(AUXFILES)
 CINCDIRS := $(foreach d,$(PROJDIRS),-I$(d))
 
 EXEC 			:= kernel
+IMAGE_PATH		:= ../hard_disk.img
+MOUNT_PATH		:= ../image
+BASIC_DIR		:= .
 
 CC				:= gcc
 ASM				:= nasm
@@ -48,22 +51,48 @@ link: $(OBJFILES)
 	$(info [$(ASM)]	Compiling $<)
 	@$(ASM) $(ASFLAGS) -o $(patsubst %.s,%.o,$<) $<
 
+mountLoop:
+	@sudo losetup /dev/loop100 $(IMAGE_PATH)
+
+umountLoop:
+	@sudo losetup -d /dev/loop100
+
+mountImage: 
+	$(MAKE) mountLoop
+	@sudo mount /dev/loop100p1 $(MOUNT_PATH)
+	
+umountImage:
+	@sudo umount /dev/loop100p1
+	$(MAKE) umountLoop
+
 pack: remake
 	$(info [make]	Packing)
-	@mkdir image
-	@sudo mount /dev/sdb1 image
-	@sudo rm image/kernel
-	@sudo cp kernel image/kernel
-	@sudo umount /dev/sdb1
-	@rm -rf image
+	$(MAKE) mountImage
+	-@sudo rm $(MOUNT_PATH)/$(BASIC_DIR)/$(EXEC)
+	@sudo cp $(EXEC) $(MOUNT_PATH)/$(BASIC_DIR)
+	$(MAKE) umountImage
+
+directRun: remake
+	$(info [make]	Running directly)	
+	-@sudo qemu-system-i386 -kernel $(EXEC)
 
 run: pack
 	$(info [make]	Running)
-	@sudo qemu-system-i386 -hda /dev/sdb
+	$(MAKE) mountLoop
+	-@sudo qemu-system-i386 -hda /dev/loop100 -no-reboot
+	$(MAKE) umountLoop
+
+runNoGraphic: pack
+	$(info [make]	Running)
+	$(MAKE) mountLoop
+	-@sudo qemu-system-i386 -hda /dev/loop100 -curses -serial mon:stdio
+	$(MAKE) umountLoop
 
 debug: pack
 	$(info [make]	Debug)
-	@sudo qemu-system-i386 -s -S -hda /dev/sdb
+	$(MAKE) mountLoop
+	-@sudo qemu-system-i386 -s -S -hda /dev/loop100
+	$(MAKE) umountLoop
 	
 secInfo: clearConsole
 	readelf -S $(EXEC)

@@ -30,17 +30,12 @@ void initSysCalls() {
 	registerInterruptHandler(128, &SysCallHandler);
 }
 
-void saveContext(TaskRegisters_t*);
-void loadContext(TaskRegisters_t*);
+void SysCallHandler(CPURegisters_t* regs) {
 
-void SysCallHandler() {
-	TaskRegisters_t regs;
-	saveContext(&regs);
-	
-	if (regs.eax >= syscallsCount)
+	if (regs->eax >= syscallsCount)
 		return;
 
-	void* location = syscalls[regs.eax];
+	void* location = syscalls[regs->eax];
 
 	int ret;
 	asm volatile ("		\
@@ -56,14 +51,12 @@ void SysCallHandler() {
 		pop %%ebx;		\
 		pop %%ebx;		"
 		:	"=a" (ret) 
-		:	"r" (regs.edi),
-			"r" (regs.esi),
-			"r" (regs.edx),
-			"r" (regs.ecx),
-			"r" (regs.ebx),
+		:	"r" (regs->edi),
+			"r" (regs->esi),
+			"r" (regs->edx),
+			"r" (regs->ecx),
+			"r" (regs->ebx),
 			"r" (location)
 	);
-	regs.eax = ret;
-	
-	loadContext(&regs);
+	regs->eax = ret;	
 }

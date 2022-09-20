@@ -1,22 +1,32 @@
-[GLOBAL InterruptEIP]
-[GLOBAL InterruptESP]
-[GLOBAL InterruptEBP]
-
 %macro ISR_NOERRCODE 1
-  [GLOBAL isr%1]
-  isr%1:
-    cli
-    push byte 0
-    push %1
-    jmp ISRCommonStub
+	[GLOBAL isr%1]
+	isr%1:
+		cli
+		mov [temp_err_code], dword 0
+		mov [temp_int_no], dword %1
+		jmp ASMInterruptPreHandler
 %endmacro
 
 %macro ISR_ERRCODE 1
-  [GLOBAL isr%1]
-  isr%1:
-    cli
-    push %1
-    jmp ISRCommonStub
+	[GLOBAL isr%1]
+	isr%1:
+		cli
+		push eax
+		mov eax, [esp + 4]
+		pop eax
+		add esp, 4
+		mov [temp_err_code], eax
+		mov [temp_int_no], dword %1
+		jmp ASMInterruptPreHandler
+%endmacro
+
+%macro IRQ 2
+	[GLOBAL irq%1]
+	irq%1:
+		cli
+		mov [temp_err_code], dword 0
+		mov [temp_int_no], dword %2
+		jmp ASMInterruptPreHandler
 %endmacro
 
 ISR_NOERRCODE 0
@@ -55,54 +65,6 @@ ISR_NOERRCODE 31
 ISR_NOERRCODE 64
 ISR_NOERRCODE 128
 
-[EXTERN ISRHandler]
-ISRCommonStub:
-	pushad
-
-	mov ax, ds
-	push eax
-
-	mov ax, 0x10
-	mov ds, ax
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
-	mov eax, [esp + 44]
-	mov [InterruptEIP], eax
-	mov [InterruptESP], esp
-	mov [InterruptEBP], ebp
-	
-	call ISRHandler
-
-	xor eax, eax
-	mov [InterruptEIP], eax
-	mov [InterruptESP], eax
-	mov [InterruptEBP], eax
-	
-	pop eax
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
-	popad
-	add esp, 8
-	sti
-	iret
-
-
-
-%macro IRQ 2
-  global irq%1
-  irq%1:
-    cli
-    push byte 0
-    push byte %2
-    jmp IRQCommonStub
-%endmacro
-
 IRQ		0, 32
 IRQ		1, 33
 IRQ		2, 34
@@ -120,10 +82,42 @@ IRQ		13, 45
 IRQ		14, 46
 IRQ		15, 47
 
-[EXTERN IRQHandler]
-IRQCommonStub:
-	pusha
+formatString: db "+1 EDI %08x ESI %08x EBP %08x ESP %08x",10,13,"+2 EBX %08x EDX %08x ECX %08x EAX %08x EFLAGS %08x",10,13,0
+[EXTERN printf]
+printContext:
+	sub esp, 4
 
+	pushf
+	pusha
+	push formatString
+	call printf
+	add esp, 4
+	popa
+	popf
+
+	add esp, 4
+	ret
+
+[EXTERN MainInterruptHandler]
+ASMInterruptPreHandler:
+	;call printContext
+	push esp ;28 ;32
+	push ebp ;24 ;28	
+	push eax ;20 ;24
+	push ecx ;16 ;20
+	push edx ;12 ;16
+	push ebx ;8  ;12
+	push esi ;4  ;8
+	push edi ;0  ;4
+	mov eax, cr3
+	push eax	 ;0
+
+	;Restoring the ESP to the pre-interrupt state (this value will get into the high-level handler)
+	mov eax, [esp + 32]
+	add eax, 12
+	mov [esp + 32], eax
+
+	xor eax, eax
 	mov ax, ds
 	push eax
 
@@ -132,124 +126,81 @@ IRQCommonStub:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-
-	mov eax, [esp + 44]
-	mov [InterruptEIP], eax
-	mov [InterruptESP], esp
-	mov [InterruptEBP], ebp
 	
-	call IRQHandler
+	push esp
 
-	xor eax, eax
-	mov [InterruptEIP], eax
-	mov [InterruptESP], eax
-	mov [InterruptEBP], eax
+	mov eax, [temp_err_code]
+	push eax
+	mov eax, [temp_int_no]
+	push eax
+
+	call MainInterruptHandler
 	
+	add esp, 12
+
 	pop ebx
 	mov ds, bx
 	mov es, bx
 	mov fs, bx
 	mov gs, bx
+
+	mov eax, [esp + 32]
+	sub eax, 12
+	mov [esp + 32], eax
+
+	;Copy IRET context
+	mov ebx, [esp + 44] ;EFLAGS
+	mov [.eflags], ebx;
 	
-	popa
-	add esp, 8
+	mov ebx, [esp + 40] ;CS
+	mov [.cs], ebx;
 	
+	mov ebx, [esp + 36] ;EIP
+	mov [.eip], ebx;
+
+	pop eax
+	mov [.cr3], eax
+
+	pop edi
+	pop esi
+	pop ebx
+	pop edx
+	pop ecx
+	pop eax
+	pop ebp
+	pop esp
+
+	mov [.tmp], eax
+	mov eax, [.cr3]
+	mov cr3, eax
+	mov eax, [.tmp]
+	
+	push eax
+	add esp, 4
+
+	mov ebx, [.eflags] ;EFLAGS
+	mov [esp + 8], ebx;
+	
+	mov ebx, [.cs] ;CS
+	mov [esp + 4], ebx;
+	
+	mov ebx, [.eip] ;EIP
+	mov [esp], ebx;
+
+	sub esp, 4
+	pop eax
+
+	;xchg bx, bx
+	;call printContext
+
 	sti
 	iret
 
-;void saveContext(TaskRegisters_t*);
-[GLOBAL saveContext]
-saveContext:
-	pusha
-	pushf
+.eflags: dd 0
+.cs:	dd 0
+.eip:	dd 0
+.cr3:	dd 0
+.tmp:	dd 0
 
-	mov [.savedESP], esp
-	mov [.savedEBP], ebp
-	
-	mov eax, [esp + 40]
-	
-	mov esp, [InterruptESP]
-	mov ebp, [InterruptEBP]
-
-	add esp, 4
-
-	;(TaskRegisters_t) EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, EFLAGS, EIP
-	;(Interrupt Saved) EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, RES,    RES, EIP, CS, EFLAGS
-	;				   0    4    8    12   16   20   24   28   32      36   40   44  48
-	mov ecx, 0
-.copyLoop:
-	mov ebx, [esp + ecx]
-	mov [eax + ecx], ebx
-	add ecx, 4
-	cmp ecx, 32
-	jnz .copyLoop
-
-	;EFLAGS
-	mov ebx, [esp + 48]
-	mov [eax + 32], ebx
-
-	;EIP
-	mov ebx, [esp + 40]
-	mov [eax + 36], ebx
-			
-	mov esp, [.savedESP]
-	mov ebp, [.savedEBP]
-
-	popf
-	popa
-
-	ret
-
-.savedESP: dd 0
-.savedEBP: dd 0
-
-;void loadContext(TaskRegisters_t*);
-[GLOBAL loadContext]
-loadContext:
-	pusha
-	pushf
-
-	mov [.savedESP], esp
-	mov [.savedEBP], ebp
-	
-	mov eax, [esp + 40]
-	
-	mov esp, [InterruptESP]
-	mov ebp, [InterruptEBP]
-
-	add esp, 4
-
-	;(TaskRegisters_t) EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, EFLAGS, EIP
-	;(Interrupt Saved) EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX, RES,    RES, EIP, CS, EFLAGS
-	;				   0    4    8    12   16   20   24   28   32      36   40   44  48
-	mov ecx, 0
-.copyLoop:
-	mov ebx, [eax + ecx]
-	mov [esp + ecx], ebx
-	add ecx, 4
-	cmp ecx, 32
-	jnz .copyLoop
-
-	;EFLAGS
-	mov ebx, [eax + 32]
-	mov [esp + 48], ebx
-
-	;EIP
-	mov ebx, [eax + 36]
-	mov [esp + 40], ebx
-			
-	mov esp, [.savedESP]
-	mov ebp, [.savedEBP]
-
-	popf
-	popa
-
-	ret
-
-.savedESP: dd 0
-.savedEBP: dd 0
-
-
-InterruptEIP: dd 0
-InterruptEBP: dd 0
-InterruptESP: dd 0
+temp_int_no: dd 0
+temp_err_code: dd 0

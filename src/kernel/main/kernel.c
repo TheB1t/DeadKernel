@@ -49,12 +49,14 @@ int32_t kernel_main() {
 	
 	Task_t* t1 = makeTaskFromELF(testModule);
 	runTask(t1);
-	//	runTask(t1);
-	//		runTask(t1);
+
+	Task_t* t2 = makeTaskFromELF(testModule);
+	runTask(t2);
+	//runTask(t1);
 	//freeTask(t1);
 //	uint32_t id = fork();
 //	yield();
-	printf("Message from kernel %d\n", getPID());
+	printf("Message from kernel! PID %d\n", getPID());
 
 
 	while (1) {

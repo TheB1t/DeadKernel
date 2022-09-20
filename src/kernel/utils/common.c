@@ -120,8 +120,8 @@ void kernel_panic(const char* message) {
 	
 	panicCounter++;
 	asm volatile ("cli");
-	printf("[Kernel Panic] %s at address 0x%08x\n", message, interruptedEIP);
-	stackTrace(16);
+	printf("[Kernel Panic] %s at address 0x%08x\n", message, 0x0);
+	//stackTrace(5);
 	for(;;);
 }
 

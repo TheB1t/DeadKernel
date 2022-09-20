@@ -9,6 +9,11 @@ typedef 		 char	int8_t;
 
 #define NULL (void*)0
 
+#define BREAKPOINT {					\
+	asm volatile("xchgw %bx, %bx;");	\
+}
+
+
 void 		memcpy(void* dest, const void* src, uint32_t len);
 void 		memset(void* dest, uint8_t val, uint32_t len);
 int			strlen(const char* str);

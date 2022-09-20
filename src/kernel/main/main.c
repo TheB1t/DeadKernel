@@ -52,9 +52,13 @@ int32_t main(multiboot_t* mboot) {
 	FPRINTF("[GRUB] Loaded %s table\n", t);
 	
 	//init stacktrace variables
-	kernelSectionTable = (KernelSectionHeader_t*)mboot->addr;
-	sectionTableSize = mboot->num;
-	sectionStringTableIndex = mboot->shndx;
-
+	if (mboot->flags & MULTIBOOT_FLAG_ELF) {
+		kernelSectionTable = (KernelSectionHeader_t*)mboot->addr;
+		sectionTableSize = mboot->num;
+		sectionStringTableIndex = mboot->shndx;
+	} else {
+		WARN("Section table can't load!");
+	}
+	
 	return kernel_main();
 }

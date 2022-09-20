@@ -13,11 +13,15 @@ typedef 		 char	int8_t;
 #define PANIC(msg)	kernel_panic(msg)
 #define ASSERT(b)	((b) ? (void)0 : kernel_assert(#b, __FILE__, __LINE__))
 
-#define FPRINTF(f, ...)				\
-{									\
+#define FPRINTF(f, ...)					\
+{										\
 	printf("%-16s: ", __FUNCTION__);	\
-	printf(f, ##__VA_ARGS__);		\
+	printf(f, ##__VA_ARGS__);			\
 }	
+
+#define BREAKPOINT {					\
+	asm volatile("xchgw %bx, %bx;");	\
+}
 
 typedef struct {
 	uint32_t x;

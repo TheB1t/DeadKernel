@@ -65,6 +65,7 @@ extern KernelSectionHeader_t*	kernelSectionTable;
 extern uint32_t					sectionTableSize;
 extern uint32_t					sectionStringTableIndex;
 
+uint8_t					isKernelSectionTableLoaded();
 KernelSectionHeader_t*	kernelSection(uint32_t idx);
 uint8_t*				kernelLookupString(uint32_t offset);
 KernelSectionHeader_t*	kernelLookupSectionByName(char* name);

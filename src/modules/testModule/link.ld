@@ -24,7 +24,3 @@ SECTIONS {
 
 	end = .; _end = .; __end = .;
 }
-
-MEMORY {
-    stack (rxw): ORIGIN = 0xAFFFE000, LENGTH = 0x2000
-}

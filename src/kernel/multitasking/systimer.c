@@ -2,9 +2,9 @@
 
 uint32_t tick = 0;
 
-static void timerCallback(registers_t regs) {
+static void timerCallback(CPURegisters_t* regs, uint32_t err_code) {
 	tick++;
-	switchTask();
+	switchTask(regs);
 }
 
 void initSysTimer(uint32_t freq) {
