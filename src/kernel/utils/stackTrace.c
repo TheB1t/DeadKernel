@@ -81,32 +81,39 @@ typedef struct stackFrame {
 	uint32_t eip;
 } stackFrame_t;
 
-//extern uint32_t InterruptEIP;
+extern CPURegisters_t* interruptContext;
 
 void printStackFrame(uint32_t address) {
-    uint32_t nearestAddress = kernelGetNearestSymbolByAddress(address);
+	if (!address)
+		return;
 
+    uint32_t nearestAddress = kernelGetNearestSymbolByAddress(address);
+	
     if (nearestAddress) {
 		uint8_t* name = kernelGetSymbolNameByAddress(nearestAddress);
-	
-		printf("	0x%08x -> %16s at address 0x%08x\n", address, name, nearestAddress);
-	
-    	//if (!strcmp(name, "ISRCommonStub") || !strcmp(name, "IRQCommonStub"))
-		//	printStackFrame(InterruptEIP);	
+
+		printf("	0x%08x -> %-25s at address 0x%08x\n", address, name, nearestAddress);
 	} else {
 		printf("	0x%08x\n", address);
 	}
 }
 
 void stackTrace(uint32_t maxFrames) {
-    stackFrame_t* stk;
-    __asm__ volatile("movl %%ebp, %0" : "=r"(stk));
-    
-    printf("--[[		Stack trace begin		]]--\n");
+    printf("--[[					Stack trace begin					]]--\n");
+
+	stackFrame_t* stk;
+	__asm__ volatile("movl %%ebp, %0" : "=r"(stk));
+	if (interruptContext) {
+		printStackFrame(interruptContext->eip);
+		stk = interruptContext->ebp;
+		maxFrames--;
+	}
     
     for(uint32_t frame = 0; frame < maxFrames; ++frame) {
+		if (!stk) break;
 		printStackFrame(stk->eip);
         stk = stk->ebp;
     }
-    printf("--[[		Stack trace end 		]]--\n");
+
+    printf("--[[					Stack trace end		 				]]--\n");
 }

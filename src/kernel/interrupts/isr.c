@@ -1,4 +1,5 @@
 #include "isr.h"
+#include "serial.h"
 
 InterruptHandler_t interruptHandlers[256];
 
@@ -33,8 +34,15 @@ uint8_t* getInterruptName(uint32_t i) {
 	}
 }
 
+CPURegisters_t* interruptContext = NULL;
+
 void MainInterruptHandler(uint32_t int_no, uint32_t err_code, CPURegisters_t* regs) {
+	//uint32_t ss; asm volatile("mov %%ss, %0":"=dN"(ss));
+	//if (ss == 0x28)
+	//	serialprintf(COM1, "Privilege escalation at address 0x%08x\n\r", regs->eip);
 	//printf("%s at address 0x%08x\n", getInterruptName(int_no), regs->eip);
+	interruptContext = regs;
+	
 	if (int_no >= 32 && int_no <= 47) {
 		if (int_no >= 40)
 			outb(0xA0, 0x20);
@@ -46,9 +54,11 @@ void MainInterruptHandler(uint32_t int_no, uint32_t err_code, CPURegisters_t* re
 		interruptHandlers[int_no](regs, err_code);
 	} else if (int_no >= 0 && int_no <= 18) {
 		uint8_t* name = getInterruptName(int_no);
-		printf("Unhandled interrupt: %s\n", name);
+		printf("Unhandled interrupt [%3d]: %s\n", int_no, name);
 		PANIC(name);
 	}
+
+	interruptContext = NULL;
 }
 
 void registerInterruptHandler(uint8_t n, InterruptHandler_t handler) {

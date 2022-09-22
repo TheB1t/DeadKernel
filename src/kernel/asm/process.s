@@ -32,13 +32,8 @@ copyPagePhysical:
 	pop ebx	
 	ret
 
-[EXTERN taskHalted]
 [GLOBAL loadEntry]
 loadEntry:
-	push ebp
-	mov ebp, esp
-	
 	call eax
-	push eax
-	call taskHalted
+	mov ecx, 0xFE11DEAD
 	jmp $

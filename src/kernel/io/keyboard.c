@@ -67,7 +67,7 @@ void keyboardHandler(CPURegisters_t* regs, uint32_t err_code) {
 }
 
 uint8_t initKeyboard(uint32_t bufferSize) {
-	ASSERT(bufferSize <= MAX_KEYBOARD_BUFFER_SIZE);
+  ASSERT(bufferSize <= MAX_KEYBOARD_BUFFER_SIZE);
 	keyboardBufferSize = bufferSize;
 	keyboardBuffer = (uint8_t*)kmalloc(bufferSize);
 	registerInterruptHandler(IRQ1, keyboardHandler);

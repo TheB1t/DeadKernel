@@ -82,25 +82,8 @@ IRQ		13, 45
 IRQ		14, 46
 IRQ		15, 47
 
-formatString: db "+1 EDI %08x ESI %08x EBP %08x ESP %08x",10,13,"+2 EBX %08x EDX %08x ECX %08x EAX %08x EFLAGS %08x",10,13,0
-[EXTERN printf]
-printContext:
-	sub esp, 4
-
-	pushf
-	pusha
-	push formatString
-	call printf
-	add esp, 4
-	popa
-	popf
-
-	add esp, 4
-	ret
-
 [EXTERN MainInterruptHandler]
 ASMInterruptPreHandler:
-	;call printContext
 	push esp ;28 ;32
 	push ebp ;24 ;28	
 	push eax ;20 ;24
@@ -116,6 +99,11 @@ ASMInterruptPreHandler:
 	mov eax, [esp + 32]
 	add eax, 12
 	mov [esp + 32], eax
+
+	xor eax, eax
+	mov ax, ss
+	and eax, 3
+	mov [.cpl], eax
 
 	xor eax, eax
 	mov ax, ds
@@ -143,10 +131,7 @@ ASMInterruptPreHandler:
 	mov es, bx
 	mov fs, bx
 	mov gs, bx
-
-	mov eax, [esp + 32]
-	sub eax, 12
-	mov [esp + 32], eax
+	mov [.ss], bx
 
 	;Copy IRET context
 	mov ebx, [esp + 44] ;EFLAGS
@@ -171,33 +156,54 @@ ASMInterruptPreHandler:
 	pop esp
 
 	mov [.tmp], eax
+
+	;Change page dir
 	mov eax, [.cr3]
 	mov cr3, eax
+
+	;Build IRET context
+	sub esp, 12
+
+	xor eax, eax
+	mov eax, [.cs]
+	and eax, 3
+	cmp eax, [.cpl]
+	jz .notChangeRing1
+
+	mov ax, ss
+	cmp ax, 0x28
+	jz .notChangeRing1
+	sub esp, 8
+	
+	mov eax, [.ss]
+	mov [esp + 16], eax ;SS
+
+	mov eax, esp
+	add eax, 20
+	mov [esp + 12], eax ;ESP
+
+.notChangeRing1:
+
+	mov eax, [.eflags] ;EFLAGS
+	mov [esp + 8], eax;
+	
+	mov eax, [.cs] ;CS
+	mov [esp + 4], eax;
+	
+	mov eax, [.eip] ;EIP
+	mov [esp], eax;
+
 	mov eax, [.tmp]
-	
-	push eax
-	add esp, 4
-
-	mov ebx, [.eflags] ;EFLAGS
-	mov [esp + 8], ebx;
-	
-	mov ebx, [.cs] ;CS
-	mov [esp + 4], ebx;
-	
-	mov ebx, [.eip] ;EIP
-	mov [esp], ebx;
-
-	sub esp, 4
-	pop eax
 
 	;xchg bx, bx
-	;call printContext
 
 	sti
 	iret
 
 .eflags: dd 0
 .cs:	dd 0
+.ss:	dd 0
+.cpl:	dd 0
 .eip:	dd 0
 .cr3:	dd 0
 .tmp:	dd 0

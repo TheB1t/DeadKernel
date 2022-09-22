@@ -9,3 +9,5 @@ extern void		screenPutString(uint8_t* str);
 extern void		screenClear();
 
 extern uint32_t	getPID();
+
+extern void yield();

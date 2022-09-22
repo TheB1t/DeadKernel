@@ -11,11 +11,12 @@
 #include "pci_ids.h"
 
 #include "keyboard.h"
+#include "serial.h"
 
 extern ELF32Header_t* testModule;
 
 int32_t kernel_main() {
-	initSysTimer(50);
+	initSysTimer(5000);
 	initPaging();
 
 	//uint32_t d = *(uint32_t*)0xD0000000;
@@ -44,39 +45,30 @@ int32_t kernel_main() {
 	}
 
 
+	serialInit(COM1, UART_BAUD_9600);
+
 	initSysCalls();
 	initTasking();
 	
-	Task_t* t1 = makeTaskFromELF(testModule);
+	Task_t* t1 = makeTaskFromELF(testModule, 1);
 	runTask(t1);
 
-	Task_t* t2 = makeTaskFromELF(testModule);
-	runTask(t2);
-	//runTask(t1);
-	//freeTask(t1);
-//	uint32_t id = fork();
-//	yield();
-	printf("Message from kernel! PID %d\n", getPID());
+	//Task_t* t2 = makeTaskFromELF(testModule, 1);
+	//runTask(t2);
 
 
-	while (1) {
-		//yield();
-		//printf("1");
-	}
+	uint32_t pid = getPID();
 
-//	switchToUserMode();
-	
-	//syscall_screenClear();
-//	syscall_screenPutString("Message from user mode!!\n");
+	yield();
+
+	DISABLE_INTERRUPTS;
+	printf("Message from kernel! PID %d Ring %d\n", pid, getCPL());
+	ENABLE_INTERRUPTS;
+
+
+	for (uint32_t i = 0; i < 0x100; i++) {
+		yield();
+	};
+
 	return 0xDEADBABA;
-}
-
-void kernel_halt() {
-	uint8_t good = 0x02;
-	while (good & 0x02)
-		good = inb(0x64);
-	outb(0x64, 0xFE);
-loop:
-	asm volatile("hlt");
-	goto loop;
 }

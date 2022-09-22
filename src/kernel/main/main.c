@@ -35,9 +35,34 @@ void memPrint(uint8_t* mem, uint32_t size) {
 	}
 }
 
+typedef struct {
+	uint32_t	E			:1;
+	uint32_t	TBL			:2;
+	uint32_t	index		:13;
+	uint32_t	RESERVED	:16;
+} SelectorErrorCode_t;
+
+void GPFHandler(CPURegisters_t* regs, uint32_t err_code) {
+	if (err_code) {
+		SelectorErrorCode_t* sec = (SelectorErrorCode_t*)err_code;
+		printf("[%s GPF] %s 0x%08x at address 0x%08x\n",
+			sec->E ? "External" : "Internal",
+			sec->TBL == 0 ? "GDT" :
+			sec->TBL == 1 ? "IDT" :
+			sec->TBL == 2 ? "LDT" : "IDT",
+			sec->index,
+			regs->eip
+		);
+	}
+	//stackTrace(6);
+	//BREAKPOINT;
+}
+
 int32_t main(multiboot_t* mboot) {	
 	initDescriptorTables();
+	registerInterruptHandler(13, GPFHandler);
 	screenClear();
+
 
 	FPRINTF("[GRUB] Loaded %d modules\n", mboot->mods_count);
 	multiboot_mods_t* mods = (multiboot_mods_t*)mboot->mods_addr;

@@ -22,6 +22,8 @@ IDTFlush:
 
 [GLOBAL TSSFlush]
 TSSFlush:
-	mov ax, 0x2B
+	xor eax, eax
+	mov eax, [esp + 4]
+	or ax, 3
 	ltr ax
 	ret

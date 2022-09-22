@@ -23,15 +23,14 @@ mboot:
   dd  start
 
 [GLOBAL start]
+[GLOBAL kernelHaltedLabel]
 [EXTERN main]
-[EXTERN taskHalted]
-
 start:
   push    ebx
   ; Execute the kernel:
   cli
   xor ebp, ebp
   call main
-  push eax
-  call taskHalted
+  
+  mov ecx, 0xFE11DEAD
   jmp $

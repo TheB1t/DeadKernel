@@ -9,9 +9,15 @@ typedef 		 char	int8_t;
 
 #define NULL (void*)0
 
+#define GDT_DESC_SEG(n, cpl)	((0x8 * n) | cpl)
+
+#define HALT		kernel_halt()
 #define WARN(msg)	kernel_warn(msg)
 #define PANIC(msg)	kernel_panic(msg)
 #define ASSERT(b)	((b) ? (void)0 : kernel_assert(#b, __FILE__, __LINE__))
+
+#define DISABLE_INTERRUPTS	asm volatile("cli")
+#define ENABLE_INTERRUPTS	asm volatile("sti")
 
 #define FPRINTF(f, ...)					\
 {										\
@@ -46,3 +52,4 @@ void		itoa(char* result, uint32_t base, int32_t value);
 void		kernel_warn(const char* message);
 void		kernel_panic(const char* message);
 void		kernel_assert(const char* message, const char* file, uint32_t line);
+void		kernel_halt();

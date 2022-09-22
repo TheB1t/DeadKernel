@@ -3,6 +3,17 @@
 #include "common.h"
 #include "isr.h"
 
+#define PL_RING0 0b00
+#define PL_RING1 0b01
+#define PL_RING2 0b10
+#define PL_RING3 0b11
+
+#define GDT_DESC_KERNEL_CODE	1
+#define GDT_DESC_KERNEL_DATA	2
+
+#define GDT_DESC_USER_CODE		3
+#define GDT_DESC_USER_DATA		4
+
 struct GDTEntry {
 	uint16_t	limit_low;
 	uint16_t	base_low;

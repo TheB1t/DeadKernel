@@ -6,12 +6,12 @@
 #include "descriptor_tables.h"
 #include "isr.h"
 #include "elf.h"
+#include "serial.h"
 
-#define KERNEL_STACK_SIZE (2048)
+#define KERNEL_STACK_SIZE			(2048)
 
 #define	PROCESS_STACK_SIZE			(0x2000)
 #define BASE_PROCESS_ESP			(0xB0000000)
-#define BASE_PROCESS_EBP			(0xB0000000)
 
 typedef enum {
 	TS_IDLE		= 0,
@@ -27,6 +27,7 @@ typedef struct task {
 	Status_t		status;			//48
 	uint32_t		kernelStack;	//52
 	uint32_t		entry;			//56
+	int32_t			exitcode;
 	struct task*	next;
 	struct task*	prev;
 } Task_t;
@@ -36,10 +37,8 @@ void		yield();
 void		switchTask(CPURegisters_t* regs);
 int32_t		runTask(Task_t* task);
 Task_t*		stopTask(Task_t* task);
-Task_t*		createTask(uint32_t esp, uint32_t ebp, uint32_t entry, PageDir_t* dir);
-int32_t		freeTask(Task_t* task);
-Task_t*		makeTaskFromELF(ELF32Header_t* hdr);
+Task_t*		makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess);
 int32_t		getPID();
 Task_t*		getCurrentTask();
 uint8_t		isTaskingInit();
-void		switchToUserMode();
+uint8_t		getCPL();

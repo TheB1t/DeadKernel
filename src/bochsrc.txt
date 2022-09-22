@@ -1,5 +1,6 @@
 clock: sync=realtime, time0=local
 cpu: ips=90000000, reset_on_triple_fault=0
+com1: enabled=1, mode=file, dev=serial.txt
 
 ata0-master: type=disk, mode=flat, path="hard_disk.img"
 boot: disk
