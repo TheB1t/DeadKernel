@@ -16,7 +16,7 @@
 extern ELF32Header_t* testModule;
 
 int32_t kernel_main() {
-	initSysTimer(5000);
+	initSysTimer();
 	initPaging();
 
 	//uint32_t d = *(uint32_t*)0xD0000000;
@@ -53,22 +53,21 @@ int32_t kernel_main() {
 	Task_t* t1 = makeTaskFromELF(testModule, 1);
 	runTask(t1);
 
-	//Task_t* t2 = makeTaskFromELF(testModule, 1);
-	//runTask(t2);
+	/* TODO: If run 2 tasks in user-mode paralelly, we have a GPF
+	Task_t* t2 = makeTaskFromELF(testModule, 1);
+	runTask(t2);
+	*/
 
 
 	uint32_t pid = getPID();
-
-	yield();
 
 	DISABLE_INTERRUPTS;
 	printf("Message from kernel! PID %d Ring %d\n", pid, getCPL());
 	ENABLE_INTERRUPTS;
 
+	sleep(2000);
 
-	for (uint32_t i = 0; i < 0x100; i++) {
-		yield();
-	};
+	printf("Upime %d seconds\n", (float)getUptime() / 1000);
 
 	return 0xDEADBABA;
 }

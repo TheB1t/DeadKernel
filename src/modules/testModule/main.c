@@ -7,10 +7,8 @@ uint32_t getCPL() {
 }
 
 int32_t main() {
-	//asm volatile("cli");
 	uint32_t esp;	asm volatile("mov %%esp, %0" : "=r" (esp));
 	uint32_t ebp;	asm volatile("mov %%ebp, %0" : "=r" (ebp));
-	//asm volatile("sti");
 
 	uint32_t pid = getPID();
 	printf("Welcome from ELF binary! PID %d ESP 0x%08x EBP 0x%08x Ring %d\n", pid, esp, ebp, getCPL());
@@ -18,6 +16,5 @@ int32_t main() {
 	for (uint32_t i = 0; i < 0x100; i++) {
 		yield();
 	};
-	printf("%d DONE!\n", pid);
 	return 0xDEADBEEF;
 }

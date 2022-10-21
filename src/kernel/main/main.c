@@ -56,6 +56,7 @@ void GPFHandler(CPURegisters_t* regs, uint32_t err_code) {
 	}
 	//stackTrace(6);
 	//BREAKPOINT;
+	for(;;);
 }
 
 int32_t main(multiboot_t* mboot) {	
@@ -71,10 +72,10 @@ int32_t main(multiboot_t* mboot) {
 		placementAddress = mods[mboot->mods_count - 1].mod_end;
 	}
 
-	uint8_t* t = "no one";
-	t = (mboot->flags & MULTIBOOT_FLAG_AOUT) > 0 ? (uint8_t*)"symbol" : t;
-	t = (mboot->flags & MULTIBOOT_FLAG_ELF) > 0 ? (uint8_t*)"section" : t;
-	FPRINTF("[GRUB] Loaded %s table\n", t);
+	FPRINTF("[GRUB] Loaded %s table\n",
+		mboot->flags & MULTIBOOT_FLAG_AOUT	? "symbol" :
+		mboot->flags & MULTIBOOT_FLAG_ELF	? "section" : "no one"
+	);
 	
 	//init stacktrace variables
 	if (mboot->flags & MULTIBOOT_FLAG_ELF) {
@@ -82,7 +83,7 @@ int32_t main(multiboot_t* mboot) {
 		sectionTableSize = mboot->num;
 		sectionStringTableIndex = mboot->shndx;
 	} else {
-		WARN("Section table can't load!");
+		WARN("Section table can't load! Stacktrace in semi-functional mode");
 	}
 	
 	return kernel_main();

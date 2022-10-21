@@ -49,6 +49,8 @@ char*		strcpy(char* dest, const char* src);
 char*		strcat(char* dest, const char* src);
 void		itoa(char* result, uint32_t base, int32_t value);
 
+void		sleep(uint32_t ms);
+
 void		kernel_warn(const char* message);
 void		kernel_panic(const char* message);
 void		kernel_assert(const char* message, const char* file, uint32_t line);

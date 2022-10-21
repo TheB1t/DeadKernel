@@ -168,13 +168,13 @@ ASMInterruptPreHandler:
 	mov eax, [.cs]
 	and eax, 3
 	cmp eax, [.cpl]
-	jz .notChangeRing1
+	jz .notChangeRing
 
 	mov ax, ss
 	cmp ax, 0x28
-	jz .notChangeRing1
+	jz .notChangeRing
 	sub esp, 8
-	
+
 	mov eax, [.ss]
 	mov [esp + 16], eax ;SS
 
@@ -182,7 +182,7 @@ ASMInterruptPreHandler:
 	add eax, 20
 	mov [esp + 12], eax ;ESP
 
-.notChangeRing1:
+.notChangeRing:
 
 	mov eax, [.eflags] ;EFLAGS
 	mov [esp + 8], eax;

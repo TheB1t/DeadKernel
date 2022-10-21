@@ -13,11 +13,16 @@
 #define	PROCESS_STACK_SIZE			(0x2000)
 #define BASE_PROCESS_ESP			(0xB0000000)
 
+#define QUEUE_TO_TASK(q)			((Task_t*)&q)
+#define QUEUE_FIRST_TASK(q)			(QUEUE_TO_TASK(q)->next)
+
 typedef enum {
-	TS_IDLE		= 0,
-	TS_RUNNING	= 1,
-	TS_FINISHED	= 2,
-	TS_YIELD	= 3
+	TS_CREATED	= 0,
+	TS_IDLE		= 1,
+	TS_RUNNING	= 2,
+	TS_FINISHED	= 3,
+	TS_YIELD	= 4,
+	TS_STOPPED	= 5
 } Status_t;
 		
 typedef struct task {
@@ -32,12 +37,16 @@ typedef struct task {
 	struct task*	prev;
 } Task_t;
 
+typedef Task_t TaskQueue_t;
+
 void		initTasking();
-void		yield();
 void		switchTask(CPURegisters_t* regs);
-int32_t		runTask(Task_t* task);
-Task_t*		stopTask(Task_t* task);
 Task_t*		makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess);
+int32_t		runTask(Task_t* task);
+void		stopTask(Task_t* task);
+Task_t*		allocTask();
+void		freeTask(Task_t* task);
+void		yield();
 int32_t		getPID();
 Task_t*		getCurrentTask();
 uint8_t		isTaskingInit();

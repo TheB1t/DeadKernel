@@ -1,16 +1,28 @@
 #include "systimer.h"
 
-uint32_t tick = 0;
+#define PIT_ONE_MS_DIVISOR		1193
+#define INTERVAL(var, val)					\
+	if ((tick - var) >= (val)) {			\
+		var = tick;
+
+uint32_t uptime				= 0;
+uint32_t lastUptimeTick		= 0;
+uint32_t lastTaskTick		= 0;
+uint32_t tick				= 0;
 
 static void timerCallback(CPURegisters_t* regs, uint32_t err_code) {
 	tick++;
-	switchTask(regs);
+	uptime++;
+	
+	INTERVAL(lastTaskTick, 10)
+		switchTask(regs);
+	}
 }
 
-void initSysTimer(uint32_t freq) {
+void initSysTimer() {
 	registerInterruptHandler(IRQ0, &timerCallback);
 
-	uint32_t divisor = 1193180 / freq;
+	uint32_t divisor = PIT_ONE_MS_DIVISOR;
 
 	outb(0x43, 0x36);
 
@@ -19,4 +31,16 @@ void initSysTimer(uint32_t freq) {
 
 	outb(0x40, l);
 	outb(0x40, h);
+}
+
+uint32_t getUptime() {
+	return uptime;
+}
+
+uint32_t getSysTimerTicks() {
+	return tick;
+}
+
+void resetSysTimerTicks() {
+	tick = 0;
 }

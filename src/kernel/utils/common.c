@@ -1,6 +1,8 @@
 #include "common.h"
 #include "screen.h"
 #include "isr.h"
+#include "task.h"
+#include "systimer.h"
 
 void outb(uint16_t port, uint8_t value) {
 	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
@@ -105,6 +107,12 @@ void itoa(char* result, uint32_t base, int32_t value) {
     }
 }
 
+void sleep(uint32_t ms) {
+	uint32_t targetTicks = getSysTimerTicks() + ms;
+	while (getSysTimerTicks() < targetTicks) {
+		yield();
+	}
+}
 
 void kernel_warn(const char* message) {
 	printf("[Kernel Warning] %s\n", message);
