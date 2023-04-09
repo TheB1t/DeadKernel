@@ -14,6 +14,9 @@
 #define GDT_DESC_USER_CODE		3
 #define GDT_DESC_USER_DATA		4
 
+#define GDT_DESC_TSS0_DATA		5
+#define GDT_DESC_TSS0   		6
+
 struct GDTEntry {
 	uint16_t	limit_low;
 	uint16_t	base_low;

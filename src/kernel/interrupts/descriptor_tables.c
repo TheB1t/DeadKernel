@@ -51,12 +51,12 @@ static void InitGDT() {
 	GDTSetGate(GDT_DESC_KERNEL_DATA	, 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING0, 0b1), pack_granularity(0b0, 0b1, 0b1));	//Kernel Data segment	(0x10)
 	GDTSetGate(GDT_DESC_USER_CODE	, 0, 0xFFFFFFFF, pack_access(0b1010, 0b1, PL_RING3, 0b1), pack_granularity(0b0, 0b1, 0b1)); //User Code segment		(0x18)
 	GDTSetGate(GDT_DESC_USER_DATA	, 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING3, 0b1), pack_granularity(0b0, 0b1, 0b1)); //User Data segment 	(0x20)
-	GDTSetGate(5					, 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING0, 0b1), pack_granularity(0b0, 0b1, 0b1));	//Task Data segment		(0x28)
+	GDTSetGate(GDT_DESC_TSS0_DATA   , 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING0, 0b1), pack_granularity(0b0, 0b1, 0b1));	//Task Data segment		(0x28)
 
-	writeTSS(6, 0x28, 0x0);
+	writeTSS(GDT_DESC_TSS0, GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0), 0x0);
 	
 	GDTFlush((uint32_t)&GDT);
-	TSSFlush(0x30);
+	TSSFlush(GDT_DESC_SEG(GDT_DESC_TSS0, PL_RING0));
 }
 
 static void GDTSetGate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
@@ -165,12 +165,12 @@ static void writeTSS(int32_t num, uint16_t ss0, uint32_t esp0) {
 	TSSEntry0.ss0	= ss0;
 	TSSEntry0.esp0	= esp0;
 
-	TSSEntry0.cs	= 0x0B;
-	TSSEntry0.ss	= 0x13;
-	TSSEntry0.ds	= 0x13;
-	TSSEntry0.es	= 0x13;
-	TSSEntry0.fs	= 0x13;
-	TSSEntry0.gs	= 0x13;
+	TSSEntry0.cs	= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING3);
+	TSSEntry0.ss	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING3);
+	TSSEntry0.ds	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING3);
+	TSSEntry0.es	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING3);
+	TSSEntry0.fs	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING3);
+	TSSEntry0.gs	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING3);
 }
 
 void setKernelStack(uint32_t stack) {

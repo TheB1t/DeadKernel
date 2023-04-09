@@ -30,13 +30,21 @@ typedef struct {
 	uint32_t	ecx;
 	uint32_t	eax;
 	uint32_t	ebp;
-	uint32_t	esp;
+
+	uint32_t	int_no;
+	uint32_t	err_code;
+
+	// IRET Main
 	uint32_t	eip;
 	uint32_t	cs;
 	uint32_t	eflags;
+
+	// IRET Second
+	uint32_t	esp0;
+	uint32_t	ss0;
 } CPURegisters_t;
 
 extern uint32_t interruptedEIP;
-typedef void (*InterruptHandler_t)(CPURegisters_t* regs, uint32_t err_code);
+typedef void (*InterruptHandler_t)(CPURegisters_t* regs);
 void registerInterruptHandler(uint8_t n, InterruptHandler_t handler);
 void unregisterInterruptHandler(uint8_t n);

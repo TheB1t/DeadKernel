@@ -56,7 +56,7 @@ uint8_t isKeyboardInit() {
 	return init;
 }
 
-void keyboardHandler(CPURegisters_t* regs, uint32_t err_code) {
+void keyboardHandler(CPURegisters_t* regs) {
     uint8_t scancode = inb(0x60);
     
     if (scancode & 0x80) {

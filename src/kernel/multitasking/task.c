@@ -23,10 +23,10 @@ uint32_t	getStackBegin();
 void		createStack(uint32_t newStart, uint32_t size);
 void		cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, uint32_t* ESP, uint32_t* EBP);
 void		moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size);
-void		yieldInterrupt(CPURegisters_t* regs, uint32_t err_code);
+void		yieldInterrupt(CPURegisters_t* regs);
 
 void initTasking() {
-	asm volatile("cli");
+	DISABLE_INTERRUPTS;
 	
 	initQueue(&mainQueue);
 
@@ -39,7 +39,6 @@ void initTasking() {
 	kernelTask->status			= TS_CREATED;
 
 	kernelTask->regs.cs			= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
-	kernelTask->regs.ds			= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	kernelTask->regs.cr3		= currentDir->physicalAddr;
 	kernelTask->regs.eflags		= 0x200;
 	asm volatile("				\
@@ -51,7 +50,7 @@ void initTasking() {
 	runTask(kernelTask);
 
 	registerInterruptHandler(64, &yieldInterrupt);
-	asm volatile("sti");
+	ENABLE_INTERRUPTS;
 }
 
 void switchTask(CPURegisters_t* regs) {
@@ -59,6 +58,11 @@ void switchTask(CPURegisters_t* regs) {
 			return;
 
 	memcpy(&currentTask->regs, regs, sizeof(CPURegisters_t));
+
+	// LOG_INFO("PID: %d", currentTask->id);
+	// LOG_INFO("KernStack: 0x%08x", currentTask->kernelStack);
+	// LOG_INFO("ESP0: 0x%08x", regs->esp0);
+	// LOG_INFO("SS0: 0x%08x", regs->ss0);
 
 	while (1) {
 		switch (currentTask->status) {
@@ -69,7 +73,7 @@ void switchTask(CPURegisters_t* regs) {
 					currentTask->regs.ecx = 0;
 					currentTask->status = TS_FINISHED;
 					currentTask->exitcode = currentTask->regs.eax;
-					printf("PID %d finished with exitcode 0x%08x in Ring %d\n", currentTask->id, currentTask->exitcode, currentTask->regs.cs & 3);
+					LOG_INFO("PID %d finished with exitcode 0x%08x in Ring %d", currentTask->id, currentTask->exitcode, currentTask->regs.cs & 3);
 				} else {
 					currentTask->status = TS_IDLE;
 				}
@@ -82,8 +86,8 @@ void switchTask(CPURegisters_t* regs) {
 			case TS_FINISHED:
 				if (currentTask == kernelTask) {
 					if (!currentTask->next) {
-						FPRINTF("Last task finished. Kernel be halted soon ;)");
-						//Set self-destruct settings ;)
+						LOG_INFO("Last task finished. Kernel be halted soon ;)");
+						//Set self-destruct settings
 						currentTask->regs.ebx = 0x50000000;
 						currentTask->status = TS_RUNNING;
 					}
@@ -111,7 +115,6 @@ void switchTask(CPURegisters_t* regs) {
 
 Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
 	DISABLE_INTERRUPTS;
-
 	PageDir_t* clonedDir	= cloneDir(currentDir);
 	
 	Task_t* newTask			= allocTask();
@@ -121,15 +124,17 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
 	newTask->status			= TS_CREATED;
 	newTask->regs.eax		= hdr->entry;
 	newTask->regs.eip		= (uint32_t)loadEntry;
-	newTask->regs.esp		= BASE_PROCESS_ESP;
+	newTask->regs.esp0		= BASE_PROCESS_ESP;
 
 	newTask->regs.cr3		= clonedDir->physicalAddr;
 	if (makeUserProcess) {
 		newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_USER_CODE, PL_RING3);
 		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
+		newTask->regs.ss0   = newTask->regs.ds;
 	} else {
 		newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
 		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);	
+		newTask->regs.ss0   = newTask->regs.ds;
 	}
 	newTask->regs.eflags	= 0x200;
 
@@ -270,7 +275,7 @@ void moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size) {
 	asm volatile("mov %0, %%ebp" : : "r" (ebp));
 }
 
-void yieldInterrupt(CPURegisters_t* regs, uint32_t err_code) {
+void yieldInterrupt(CPURegisters_t* regs) {
 	if (!isTaskingInit())
 		return;
 	

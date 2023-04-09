@@ -1,19 +1,18 @@
 #include "systimer.h"
 
-#define PIT_ONE_MS_DIVISOR		1193
+#define PIT_ONE_MS_DIVISOR		1193		// really 837us
 #define INTERVAL(var, val)					\
 	if ((tick - var) >= (val)) {			\
 		var = tick;
 
 uint32_t uptime				= 0;
-uint32_t lastUptimeTick		= 0;
 uint32_t lastTaskTick		= 0;
 uint32_t tick				= 0;
 
-static void timerCallback(CPURegisters_t* regs, uint32_t err_code) {
+static void timerCallback(CPURegisters_t* regs) {
 	tick++;
 	uptime++;
-	
+
 	INTERVAL(lastTaskTick, 10)
 		switchTask(regs);
 	}

@@ -9,7 +9,7 @@ typedef 		 char	int8_t;
 
 #define NULL (void*)0
 
-#define GDT_DESC_SEG(n, cpl)	((0x8 * n) | cpl)
+#define GDT_DESC_SEG(n, cpl)	(uint32_t)(((uint32_t)0x8 * (uint32_t)n) | (uint32_t)cpl)
 
 #define HALT		kernel_halt()
 #define WARN(msg)	kernel_warn(msg)
@@ -19,11 +19,10 @@ typedef 		 char	int8_t;
 #define DISABLE_INTERRUPTS	asm volatile("cli")
 #define ENABLE_INTERRUPTS	asm volatile("sti")
 
-#define FPRINTF(f, ...)					\
-{										\
-	printf("%-16s: ", __FUNCTION__);	\
-	printf(f, ##__VA_ARGS__);			\
-}	
+#define LOG(level, format, ...)		printf("[%s] " format "\n", level, ##__VA_ARGS__)
+#define LOG_INFO(format, ...)		LOG("INFO", format, ##__VA_ARGS__)
+#define LOG_WARN(format, ...)		LOG("WARN", format, ##__VA_ARGS__)
+#define LOG_ERR(format, ...)		LOG("ERR", format, ##__VA_ARGS__)
 
 #define BREAKPOINT {					\
 	asm volatile("xchgw %bx, %bx;");	\

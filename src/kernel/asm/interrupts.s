@@ -2,8 +2,8 @@
 	[GLOBAL isr%1]
 	isr%1:
 		cli
-		mov [temp_err_code], dword 0
-		mov [temp_int_no], dword %1
+		push dword 0
+		push dword %1
 		jmp ASMInterruptPreHandler
 %endmacro
 
@@ -12,11 +12,7 @@
 	isr%1:
 		cli
 		push eax
-		mov eax, [esp + 4]
-		pop eax
-		add esp, 4
-		mov [temp_err_code], eax
-		mov [temp_int_no], dword %1
+		push dword %1
 		jmp ASMInterruptPreHandler
 %endmacro
 
@@ -24,8 +20,8 @@
 	[GLOBAL irq%1]
 	irq%1:
 		cli
-		mov [temp_err_code], dword 0
-		mov [temp_int_no], dword %2
+		push dword 0
+		push dword %2
 		jmp ASMInterruptPreHandler
 %endmacro
 
@@ -82,131 +78,98 @@ IRQ		13, 45
 IRQ		14, 46
 IRQ		15, 47
 
+; typedef struct {
+; 	uint32_t	ds;			;; - 30
+; 	uint32_t	cr3;		;; - 26
+; 	uint32_t	edi;		;; - 24
+; 	uint32_t	esi;		;; - 20
+; 	uint32_t	ebx;		;; - 16
+; 	uint32_t	edx;		;; - 12
+; 	uint32_t	ecx;		;; - 8
+; 	uint32_t	eax;		;; - 4
+; 	uint32_t	ebp;		;; - 0
+
+;	WE ARE HERE
+; 	uint32_t	err_code;	;; + 4
+; 	uint32_t	int_no;		;; + 8
+
+; 	// IRET Main
+; 	uint32_t	eip;		;; + 12
+; 	uint32_t	cs;			;; + 16
+; 	uint32_t	eflags;		;; + 20
+
+; 	// IRET Second
+; 	uint32_t	esp0;		;; + 24
+; 	uint32_t	ss0;		;; + 26
+; } CPURegisters_t;
+
+struc CPURegs
+	._ds: resd 1
+	._cr3: resd 1
+	._edi: resd 1
+	._esi: resd 1
+	._ebx: resd 1
+	._edx: resd 1
+	._ecx: resd 1
+	._eax: resd 1
+	._ebp: resd 1
+
+	._int_no: resd 1
+	._err_code: resd 1
+	
+	; iret main
+	._eip: resd 1
+	._cs: resd 1
+	._eflags: resd 1
+
+	; iret second
+	._esp0: resd 1
+	._ss0: resd 1
+endstruc
+
 [EXTERN MainInterruptHandler]
 ASMInterruptPreHandler:
-	push esp ;28 ;32
-	push ebp ;24 ;28	
-	push eax ;20 ;24
-	push ecx ;16 ;20
-	push edx ;12 ;16
-	push ebx ;8  ;12
-	push esi ;4  ;8
-	push edi ;0  ;4
+    sub esp, 36
+	
+	mov [esp + CPURegs._eax], eax
+	mov [esp + CPURegs._ebx], ebx
+	mov [esp + CPURegs._ecx], ecx
+	mov [esp + CPURegs._edx], edx
+	mov [esp + CPURegs._esi], esi
+	mov [esp + CPURegs._edi], edi
+	mov [esp + CPURegs._ebp], ebp
+	mov [esp + CPURegs._ds], ds
 	mov eax, cr3
-	push eax	 ;0
-
-	;Restoring the ESP to the pre-interrupt state (this value will get into the high-level handler)
-	mov eax, [esp + 32]
-	add eax, 12
-	mov [esp + 32], eax
-
-	xor eax, eax
-	mov ax, ss
-	and eax, 3
-	mov [.cpl], eax
-
-	xor eax, eax
-	mov ax, ds
-	push eax
+	mov [esp + CPURegs._cr3], eax
 
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-	
+
 	push esp
+    call MainInterruptHandler
+    add esp, 4
 
-	mov eax, [temp_err_code]
-	push eax
-	mov eax, [temp_int_no]
-	push eax
+	mov ax, [esp + CPURegs._ds]
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
 
-	call MainInterruptHandler
-	
-	add esp, 12
-
-	pop ebx
-	mov ds, bx
-	mov es, bx
-	mov fs, bx
-	mov gs, bx
-	mov [.ss], bx
-
-	;Copy IRET context
-	mov ebx, [esp + 44] ;EFLAGS
-	mov [.eflags], ebx;
-	
-	mov ebx, [esp + 40] ;CS
-	mov [.cs], ebx;
-	
-	mov ebx, [esp + 36] ;EIP
-	mov [.eip], ebx;
-
-	pop eax
-	mov [.cr3], eax
-
-	pop edi
-	pop esi
-	pop ebx
-	pop edx
-	pop ecx
-	pop eax
-	pop ebp
-	pop esp
-
-	mov [.tmp], eax
-
-	;Change page dir
-	mov eax, [.cr3]
+	mov ebx, [esp + CPURegs._ebx]
+	mov ecx, [esp + CPURegs._ecx]
+	mov edx, [esp + CPURegs._edx]
+	mov esi, [esp + CPURegs._esi]
+	mov edi, [esp + CPURegs._edi]
+	mov ebp, [esp + CPURegs._ebp]
+	mov eax, [esp + CPURegs._cr3]
 	mov cr3, eax
+	mov eax, [esp + CPURegs._eax]
 
-	;Build IRET context
-	sub esp, 12
+	add esp, 44 ; remove crap stuff
 
-	xor eax, eax
-	mov eax, [.cs]
-	and eax, 3
-	cmp eax, [.cpl]
-	jz .notChangeRing
-
-	mov ax, ss
-	cmp ax, 0x28
-	jz .notChangeRing
-	sub esp, 8
-
-	mov eax, [.ss]
-	mov [esp + 16], eax ;SS
-
-	mov eax, esp
-	add eax, 20
-	mov [esp + 12], eax ;ESP
-
-.notChangeRing:
-
-	mov eax, [.eflags] ;EFLAGS
-	mov [esp + 8], eax;
-	
-	mov eax, [.cs] ;CS
-	mov [esp + 4], eax;
-	
-	mov eax, [.eip] ;EIP
-	mov [esp], eax;
-
-	mov eax, [.tmp]
-
-	;xchg bx, bx
-
+    ; xchg bx, bx
 	sti
-	iret
-
-.eflags: dd 0
-.cs:	dd 0
-.ss:	dd 0
-.cpl:	dd 0
-.eip:	dd 0
-.cr3:	dd 0
-.tmp:	dd 0
-
-temp_int_no: dd 0
-temp_err_code: dd 0
+    iret

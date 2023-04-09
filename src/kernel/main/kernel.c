@@ -22,26 +22,26 @@ int32_t kernel_main() {
 	//uint32_t d = *(uint32_t*)0xD0000000;
 	
 	if (BIOS32Find()) {
-		FPRINTF("BIOS32 found on 0x%08x\n", BIOS32GetAddress());
+		LOG_INFO("BIOS32 found on 0x%08x", BIOS32GetAddress());
 		
 		uint8_t	HWMech, majorVer, minorVer;
 		ASSERT(BIOS32CheckPCI(&majorVer, &minorVer, &HWMech));
-		FPRINTF("PCI BIOS found %02x ver %02x.%02x\n", HWMech, majorVer, minorVer);
+		LOG_INFO("PCI BIOS found %02x ver %02x.%02x", HWMech, majorVer, minorVer);
 		
-		FPRINTF("Scan PCI bus...");
+		LOG_INFO("Scan PCI bus...");
 		PCIDevice_t devices[256];
 		memset(devices, 0, sizeof(PCIDevice_t) * 256);
 
 		uint32_t count = PCIDirectScan(devices);
-		printf("%d devices!\n", count);
+		LOG_INFO("Found %d devices!\n", count);
 		
 		PCIDevice_t* device = devices;
 		while (device->vendor) {
-			FPRINTF("	%03d:%02d:%01d [%04x:%04x] %s\n", device->bus, device->dev, device->fn, device->vendor, device->device, PCIGetClassName(device->class));
+			LOG_INFO("	%03d:%02d:%01d [%04x:%04x] %s", device->bus, device->dev, device->fn, device->vendor, device->device, PCIGetClassName(device->class));
 			device++;
 		}
 	} else {
-		FPRINTF("BIOS32 instance not found!\n");
+		LOG_INFO("BIOS32 instance not found!");
 	}
 
 
@@ -53,21 +53,21 @@ int32_t kernel_main() {
 	Task_t* t1 = makeTaskFromELF(testModule, 1);
 	runTask(t1);
 
-	/* TODO: If run 2 tasks in user-mode paralelly, we have a GPF
+	/* TODO: If run 2 tasks in user-mode paralelly, we have a GPF */
 	Task_t* t2 = makeTaskFromELF(testModule, 1);
 	runTask(t2);
-	*/
+	//*/
 
 
 	uint32_t pid = getPID();
 
 	DISABLE_INTERRUPTS;
-	printf("Message from kernel! PID %d Ring %d\n", pid, getCPL());
+	LOG_INFO("Message from kernel! PID %d Ring %d", pid, getCPL());
 	ENABLE_INTERRUPTS;
 
 	sleep(2000);
 
-	printf("Upime %d seconds\n", (float)getUptime() / 1000);
+	printf("Upime %d seconds\n", getUptime() / 1000);
 
 	return 0xDEADBABA;
 }

@@ -33,6 +33,11 @@
 #define UART_BAUD_115200	0x0001
 
 #define COM1 0x3F8
+
+#define SERIAL_LOG(level, port, format, ...)		serialprintf(port, "[%s] " format "\n", level, ##__VA_ARGS__)
+#define SERIAL_LOG_INFO(port, format, ...)		    SERIAL_LOG("INFO", port, format, ##__VA_ARGS__)
+#define SERIAL_LOG_WARN(port, format, ...)		    SERIAL_LOG("WARN", port, format, ##__VA_ARGS__)
+#define SERIAL_LOG_ERR(port, format, ...)		    SERIAL_LOG("ERR", port, format, ##__VA_ARGS__)
  
 int32_t		serialInit(uint16_t port, uint16_t baud);
 uint8_t		serialReadByte(uint16_t port);

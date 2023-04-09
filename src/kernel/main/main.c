@@ -42,9 +42,9 @@ typedef struct {
 	uint32_t	RESERVED	:16;
 } SelectorErrorCode_t;
 
-void GPFHandler(CPURegisters_t* regs, uint32_t err_code) {
-	if (err_code) {
-		SelectorErrorCode_t* sec = (SelectorErrorCode_t*)err_code;
+void GPFHandler(CPURegisters_t* regs) {
+	if (regs->err_code) {
+		SelectorErrorCode_t* sec = (SelectorErrorCode_t*)regs->err_code;
 		printf("[%s GPF] %s 0x%08x at address 0x%08x\n",
 			sec->E ? "External" : "Internal",
 			sec->TBL == 0 ? "GDT" :
@@ -65,14 +65,14 @@ int32_t main(multiboot_t* mboot) {
 	screenClear();
 
 
-	FPRINTF("[GRUB] Loaded %d modules\n", mboot->mods_count);
+	LOG_INFO("[GRUB] Loaded %d modules", mboot->mods_count);
 	multiboot_mods_t* mods = (multiboot_mods_t*)mboot->mods_addr;
 	if (mboot->mods_count > 0) {
 		testModule = (ELF32Header_t*)mods[0].mod_start;
 		placementAddress = mods[mboot->mods_count - 1].mod_end;
 	}
 
-	FPRINTF("[GRUB] Loaded %s table\n",
+	LOG_INFO("[GRUB] Loaded %s table",
 		mboot->flags & MULTIBOOT_FLAG_AOUT	? "symbol" :
 		mboot->flags & MULTIBOOT_FLAG_ELF	? "section" : "no one"
 	);

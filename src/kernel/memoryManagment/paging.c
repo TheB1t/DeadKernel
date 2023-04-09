@@ -104,7 +104,7 @@ uint8_t allocFramesMirrored(uint32_t start, uint32_t end, uint8_t makePage, uint
 	end		+= PAGE_SIZE;
 	
 	uint32_t len = end - start;
-	//FPRINTF("Allocating [%08x:%08x] memory region (mirrored)\n", start, end);
+	//LOG_INFO("Allocating [%08x:%08x] memory region (mirrored)", start, end);
 
 	for (uint32_t i = start; i < start + len; i += PAGE_SIZE)		
 		linkFrame(getPage(i, makePage, currentDir), i, isKernel, isWriteable);
@@ -117,7 +117,7 @@ uint8_t allocFramesMirrored(uint32_t start, uint32_t end, uint8_t makePage, uint
  */
 void allocFrames(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKernel, uint32_t isWriteable) {
 	uint32_t len = end - start;
-	//FPRINTF("Allocating [%08x:%08x] memory region\n", start, end);
+	//LOG_INFO("Allocating [%08x:%08x] memory region", start, end);
 	for (uint32_t i = start; i < start + len; i += PAGE_SIZE)
 		allocFrame(getPage(i, makePage, currentDir), isKernel, isWriteable);
 }
@@ -159,10 +159,10 @@ void initPaging() {
 	frames	= (uint32_t*)kmalloc(INDEX_FROM_BIT(nframes));
 	memset(frames, 0, INDEX_FROM_BIT(nframes));
 
-	FPRINTF("Page size: %d bytes\n", PAGE_SIZE);
-	FPRINTF("Page directory size: %d bytes\n", sizeof(PageDir_t));
-	FPRINTF("Free frames: %d\n", nframes);
-	FPRINTF("Memory available: %d MB (range %08x:%08x)\n", memEndPageMB, 0, memEndPage);
+	LOG_INFO("Page size: %d bytes", PAGE_SIZE);
+	LOG_INFO("Page directory size: %d bytes", sizeof(PageDir_t));
+	LOG_INFO("Free frames: %d", nframes);
+	LOG_INFO("Memory available: %d MB (range %08x:%08x)", memEndPageMB, 0, memEndPage);
 	
 	kernelDir = (PageDir_t*)_kmalloc(sizeof(PageDir_t), 1, 0);
 	currentDir = kernelDir;
@@ -242,25 +242,25 @@ Page_t* getPage(uint32_t address, uint8_t make, PageDir_t* dir) {
 /*
  *	Page fault interrupt handler
  */
-void pageFault(CPURegisters_t* regs, uint32_t err_code) {
+void pageFault(CPURegisters_t* regs) {
     uint32_t faultingAddress;
     asm volatile ("mov %%cr2, %0" : "=r" (faultingAddress));
 
     char* err = "Unknown error";
     
-    if (!(err_code & 0x1)) 
+    if (!(regs->err_code & 0x1)) 
     	err = "Page not present";
     	
-    if (err_code & 0x2)
+    if (regs->err_code & 0x2)
     	err = "Page is read-only";
     	
-    if (err_code & 0x4)
+    if (regs->err_code & 0x4)
     	err = "Processor in user-mode";
     	 
-    if (err_code & 0x8)
+    if (regs->err_code & 0x8)
     	err = "Overwrite CPU-reserved bits";
 
-	FPRINTF("Page fault [0x%x] %s (eip 0x%08x)\n", faultingAddress, err, regs->eip);
+	LOG_INFO("Page fault [0x%x] %s (eip 0x%08x)", faultingAddress, err, regs->eip);
     PANIC("Page fault");	
 }
 

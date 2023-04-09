@@ -1,5 +1,7 @@
 # DeadKernel
 
+__Version:__ alpha-0.1
+
 ### About DeadKernel
 
 DeadKernel will be a fully modular kernel in the future, almost every part of it will be presented as a module that can be replaced with another with more/less functionality, optimization, etc. But right now it's a simple core providing basic functionality for development, and nothing more.
@@ -32,7 +34,7 @@ For debugging kernel:
 - Task sheduler
 	- 6 task states
 	- Creating task from ELF image
-	- Switching between tasks have different privilege levels (with some errors)
+	- Switching between tasks have different privilege levels
 	- Detecting task completion
 	- Halt CPU if all tasks finished (includes kernel)
 	- Yielding
