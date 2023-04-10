@@ -2,21 +2,17 @@
 
 static AddrIndirect BIOS32Indirect = { 0, 0 };
 static AddrIndirect PCIBIOSIndirect = { 0, 0 };
+extern BIOS32_t* find_bios32(void);
 
 uint32_t BIOS32GetAddress() {
 	return BIOS32Indirect.address;
 }
 
 uint8_t BIOS32Find() {
-	BIOS32_t* ptr = (BIOS32_t*)0x000E0000;
+	BIOS32_t* ptr = find_bios32();
 
-	for (uint32_t i = 0; i < 0x1FFFF; i++) {
-		BIOS32_t* p = ptr + i;
-		if (p->signature == BIOS32_SIGNATURE) {
-			ptr += i;
-			break;
-		}
-	}
+	if (!ptr)
+		return FAIL;
 
 	if (ptr->signature != BIOS32_SIGNATURE)
 		return FAIL;
