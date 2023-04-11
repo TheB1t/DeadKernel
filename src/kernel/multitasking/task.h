@@ -22,7 +22,8 @@ typedef enum {
 	TS_RUNNING	= 2,
 	TS_FINISHED	= 3,
 	TS_YIELD	= 4,
-	TS_STOPPED	= 5
+	TS_STOPPED	= 5,
+	TS_ZOMBIE   = 6
 } Status_t;
 		
 typedef struct task {
@@ -33,6 +34,7 @@ typedef struct task {
 	uint32_t		kernelStack;	//52
 	uint32_t		entry;			//56
 	int32_t			exitcode;
+	uint32_t		time;
 	struct task*	next;
 	struct task*	prev;
 } Task_t;

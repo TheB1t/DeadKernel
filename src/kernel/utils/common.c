@@ -3,6 +3,7 @@
 #include "isr.h"
 #include "task.h"
 #include "systimer.h"
+#include "stackTrace.h"
 
 void outb(uint16_t port, uint8_t value) {
 	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));

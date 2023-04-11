@@ -14,7 +14,7 @@ extern PageDir_t* kernelDir;
 extern PageDir_t* currentDir;
 extern void loadEntry();
 
-uint32_t nextPID = 1;
+uint32_t nextPID = 0;
 
 void		insertTask(TaskQueue_t* queue, Task_t* task);
 void		cutTask(Task_t* task);
@@ -28,6 +28,7 @@ void		yieldInterrupt(CPURegisters_t* regs);
 void initTasking() {
 	DISABLE_INTERRUPTS;
 	
+	// globalMutex = mutex_alloc();
 	initQueue(&mainQueue);
 
 	moveStack(getStackBegin(), 0xE0000000, 0x2000);
@@ -37,8 +38,11 @@ void initTasking() {
 	kernelTask->pageDir			= currentDir;
 	kernelTask->kernelStack		= _kmalloc(KERNEL_STACK_SIZE, 1, 0);
 	kernelTask->status			= TS_CREATED;
+	kernelTask->time			= 0;
 
 	kernelTask->regs.cs			= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
+	kernelTask->regs.ds			= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
+	kernelTask->regs.ss0		= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	kernelTask->regs.cr3		= currentDir->physicalAddr;
 	kernelTask->regs.eflags		= 0x200;
 	asm volatile("				\
@@ -53,25 +57,51 @@ void initTasking() {
 	ENABLE_INTERRUPTS;
 }
 
+static void copyContext(CPURegisters_t* dst, CPURegisters_t* src) {
+	#define COPY(dst, src, field)	(dst)->field = (src)->field
+
+	COPY(dst, src, eax);
+	COPY(dst, src, ebx);
+	COPY(dst, src, ecx);
+	COPY(dst, src, edx);
+	COPY(dst, src, esi);
+	COPY(dst, src, edi);	
+
+	COPY(dst, src, ebp);
+	COPY(dst, src, cr3);
+	COPY(dst, src, ds);
+
+	// First level IRET context
+	serialprintf(COM1, "[copyContext] EIP 0x%08x CS 0x%08x EFLAGS 0x%08x\n", src->eip, src->cs, src->eflags);
+	COPY(dst, src, eip);
+	COPY(dst, src, cs);
+	COPY(dst, src, eflags);
+
+	if ((src->cs & 3) > 0) {
+		// Second level IRET context
+		serialprintf(COM1, "[copyContext] SS0 0x%08x ESP0 0x%08x\n", src->ss0, src->esp0);
+		COPY(dst, src, ss0);
+		COPY(dst, src, esp0);
+	}
+
+	dst->int_no		= 0;
+	dst->err_code	= 0;
+}
+
 void switchTask(CPURegisters_t* regs) {
 	if (!isTaskingInit())
 			return;
 
-	memcpy(&currentTask->regs, regs, sizeof(CPURegisters_t));
-
-	// LOG_INFO("PID: %d", currentTask->id);
-	// LOG_INFO("KernStack: 0x%08x", currentTask->kernelStack);
-	// LOG_INFO("ESP0: 0x%08x", regs->esp0);
-	// LOG_INFO("SS0: 0x%08x", regs->ss0);
+	Task_t* oldTask = currentTask;
+	copyContext(&currentTask->regs, regs);
 
 	while (1) {
 		switch (currentTask->status) {
 			case TS_YIELD:
-
 			case TS_RUNNING:
 				if (currentTask->regs.ecx == 0xFE11DEAD) {
 					currentTask->regs.ecx = 0;
-					currentTask->status = TS_FINISHED;
+					currentTask->status = TS_ZOMBIE;
 					currentTask->exitcode = currentTask->regs.eax;
 					LOG_INFO("PID %d finished with exitcode 0x%08x in Ring %d", currentTask->id, currentTask->exitcode, currentTask->regs.cs & 3);
 				} else {
@@ -83,6 +113,7 @@ void switchTask(CPURegisters_t* regs) {
 				currentTask->status = TS_RUNNING;
 				break;
 
+			case TS_ZOMBIE:
 			case TS_FINISHED:
 				if (currentTask == kernelTask) {
 					if (!currentTask->next) {
@@ -110,7 +141,16 @@ void switchTask(CPURegisters_t* regs) {
 
 	setKernelStack(currentTask->kernelStack + KERNEL_STACK_SIZE);
 
-	memcpy(regs, &currentTask->regs, sizeof(CPURegisters_t));
+	int oldCPL = oldTask->regs.cs & 3;
+	int newCPL = currentTask->regs.cs & 3;
+
+	if (oldCPL != newCPL)
+		serialprintf(COM1, "[switchTask] Privelege %s %d -> %d\n", newCPL < oldCPL ? "escalation" : "downgrading", oldCPL, newCPL);
+
+	copyContext(regs, &currentTask->regs);
+
+	serialprintf(COM1, "[switchTask] Do switching PID %d -> PID %d\n", oldTask->id, currentTask->id);
+	BREAKPOINT;
 }
 
 Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
@@ -122,6 +162,7 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
 	newTask->pageDir		= clonedDir;
 	newTask->kernelStack	= _kmalloc(KERNEL_STACK_SIZE, 1, 0);
 	newTask->status			= TS_CREATED;
+	newTask->time			= 0;
 	newTask->regs.eax		= hdr->entry;
 	newTask->regs.eip		= (uint32_t)loadEntry;
 	newTask->regs.esp0		= BASE_PROCESS_ESP;
@@ -130,11 +171,11 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
 	if (makeUserProcess) {
 		newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_USER_CODE, PL_RING3);
 		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
-		newTask->regs.ss0   = newTask->regs.ds;
+		newTask->regs.ss0   = GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
 	} else {
 		newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
-		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);	
-		newTask->regs.ss0   = newTask->regs.ds;
+		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);	
+		newTask->regs.ss0   = GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	}
 	newTask->regs.eflags	= 0x200;
 

@@ -11,7 +11,6 @@
 	[GLOBAL isr%1]
 	isr%1:
 		cli
-		push eax
 		push dword %1
 		jmp ASMInterruptPreHandler
 %endmacro
@@ -114,8 +113,8 @@ struc CPURegs
 	._eax: resd 1
 	._ebp: resd 1
 
-	._int_no: resd 1
 	._err_code: resd 1
+	._int_no: resd 1
 	
 	; iret main
 	._eip: resd 1
@@ -138,7 +137,9 @@ ASMInterruptPreHandler:
 	mov [esp + CPURegs._esi], esi
 	mov [esp + CPURegs._edi], edi
 	mov [esp + CPURegs._ebp], ebp
-	mov [esp + CPURegs._ds], ds
+	xor eax, eax
+	mov ax, ds
+	mov [esp + CPURegs._ds], eax
 	mov eax, cr3
 	mov [esp + CPURegs._cr3], eax
 

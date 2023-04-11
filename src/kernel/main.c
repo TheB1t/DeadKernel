@@ -2,12 +2,6 @@
 #include "common.h"
 #include "screen.h"
 #include "descriptor_tables.h"
-#include "systimer.h"
-#include "paging.h"
-#include "kheap.h"
-#include "task.h"
-#include "syscall.h"
-#include "pci.h"
 #include "stackTrace.h"
 
 #include "elf.h"

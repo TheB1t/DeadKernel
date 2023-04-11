@@ -7,6 +7,7 @@
 #include "kheap.h"
 #include "task.h"
 #include "syscall.h"
+#include "bios32.h"
 #include "pci.h"
 #include "pci_ids.h"
 
@@ -25,7 +26,7 @@ int32_t kernel_main() {
 		LOG_INFO("BIOS32 found on 0x%08x", BIOS32GetAddress());
 		
 		uint8_t	HWMech, majorVer, minorVer;
-		ASSERT(BIOS32CheckPCI(&majorVer, &minorVer, &HWMech));
+		ASSERT(PCICheckSupport(&majorVer, &minorVer, &HWMech));
 		LOG_INFO("PCI BIOS found %02x ver %02x.%02x", HWMech, majorVer, minorVer);
 		
 		LOG_INFO("Scan PCI bus...");
@@ -44,7 +45,11 @@ int32_t kernel_main() {
 		LOG_INFO("BIOS32 instance not found!");
 	}
 
-
+	uint32_t entry = BIOS32GetService(*(uint32_t*)"$PIC");
+	if (entry)
+		LOG_INFO("Found");
+	else
+		LOG_INFO("Not found");
 	serialInit(COM1, UART_BAUD_9600);
 
 	initSysCalls();

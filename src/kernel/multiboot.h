@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common.h"
 
 #define MULTIBOOT_FLAG_MEM     0x001

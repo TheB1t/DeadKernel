@@ -105,7 +105,7 @@ void stackTrace(uint32_t maxFrames) {
 	__asm__ volatile("movl %%ebp, %0" : "=r"(stk));
 	if (interruptContext) {
 		printStackFrame(interruptContext->eip);
-		stk = interruptContext->ebp;
+		stk = (stackFrame_t*)interruptContext->ebp;
 		maxFrames--;
 	}
     

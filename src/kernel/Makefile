@@ -1,18 +1,17 @@
 MAKEFLAGS += --no-print-directory
 
 AUXFILES := Makefile
-PROJDIRS := main asm interrupts memoryManagment utils io pci multitasking fileReaders
 
-SRCFILES := $(shell find $(PROJDIRS) -type f -name "*.c")
-HDRFILES := $(shell find $(PROJDIRS) -type f -name "*.h")
-ASMFILES := $(shell find $(PROJDIRS) -type f -name "*.s")
+SRCFILES := $(shell find . -type f -name "*.c")
+HDRFILES := $(shell find . -type f -name "*.h")
+ASMFILES := $(shell find . -type f -name "*.s")
 
-OBJEXISTS := $(shell find $(PROJDIRS) -type f -name "*.o")
+OBJEXISTS := $(shell find . -type f -name "*.o")
 OBJFILES := $(patsubst %.s,%.o,$(ASMFILES)) $(patsubst %.c,%.o,$(SRCFILES))
 
 ALLFILES := $(SRCFILES) $(HDRFILES) $(ASMFILES) $(AUXFILES)
 
-CINCDIRS := $(foreach d,$(PROJDIRS),-I$(d))
+CINCDIRS := $(shell find . -type d -exec echo "-I{}" \;)
 
 EXEC 			:= kernel
 IMAGE_PATH		:= ../hard_disk.img
@@ -45,13 +44,13 @@ link: $(OBJFILES)
 	$(info [$(LD)]	Linking $(EXEC))
 	@$(LD) $(LDFLAGS) -o $(EXEC) $(OBJFILES)
 
-.c.o:
-	$(info [$(CC)]	Compiling $<)
-	@$(CC) -c $(CINCDIRS) $(CFLAGS) -o $(patsubst %.c,%.o,$<) $<
-	
 .s.o:
 	$(info [$(ASM)]	Compiling $<)
 	@$(ASM) $(ASFLAGS) -o $(patsubst %.s,%.o,$<) $<
+
+.c.o: 
+	$(info [$(CC)]	Compiling $<)
+	@$(CC) -c $(CINCDIRS) $(CFLAGS) -o $(patsubst %.c,%.o,$<) $<
 
 mountLoop:
 	@sudo losetup /dev/loop100 $(IMAGE_PATH)

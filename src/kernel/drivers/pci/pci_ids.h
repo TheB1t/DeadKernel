@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common.h"
 
 const char* PCIGetClassName(uint32_t classCode) {

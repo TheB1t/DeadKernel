@@ -6,7 +6,7 @@
 #define pack_flags(P, DPL) ((((0x00 | 0b01110)) | (DPL & 0b11) << 5) | (P & 0b1) << 7)
 
 //Global Description Table
-#define GDT_ENTRIES_SIZE 7
+#define GDT_ENTRIES_SIZE 6
 
 GDTEntry_t	GDTEntries[GDT_ENTRIES_SIZE];
 GDTPTR_t	GDT;
@@ -51,12 +51,11 @@ static void InitGDT() {
 	GDTSetGate(GDT_DESC_KERNEL_DATA	, 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING0, 0b1), pack_granularity(0b0, 0b1, 0b1));	//Kernel Data segment	(0x10)
 	GDTSetGate(GDT_DESC_USER_CODE	, 0, 0xFFFFFFFF, pack_access(0b1010, 0b1, PL_RING3, 0b1), pack_granularity(0b0, 0b1, 0b1)); //User Code segment		(0x18)
 	GDTSetGate(GDT_DESC_USER_DATA	, 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING3, 0b1), pack_granularity(0b0, 0b1, 0b1)); //User Data segment 	(0x20)
-	GDTSetGate(GDT_DESC_TSS0_DATA   , 0, 0xFFFFFFFF, pack_access(0b0010, 0b1, PL_RING0, 0b1), pack_granularity(0b0, 0b1, 0b1));	//Task Data segment		(0x28)
 
 	writeTSS(GDT_DESC_TSS0, GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0), 0x0);
 	
 	GDTFlush((uint32_t)&GDT);
-	TSSFlush(GDT_DESC_SEG(GDT_DESC_TSS0, PL_RING0));
+	TSSFlush(GDT_DESC_SEG(GDT_DESC_TSS0, PL_RING3));
 }
 
 static void GDTSetGate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
