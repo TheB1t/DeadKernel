@@ -93,9 +93,9 @@ uint32_t kmalloc(uint32_t size) {
 	return _kmalloc(size, 0, 0);
 }
 
-void kfree(uint32_t addr) {
+void kfree(void* addr) {
 	if (kernelHeap)
-		free((void*)addr, kernelHeap);
+		free(addr, kernelHeap);
 }
 
 static HeapChunk_t* findSmallestChunk(size_t size, Heap_t* heap) {

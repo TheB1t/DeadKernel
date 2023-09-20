@@ -29,4 +29,4 @@ void	free(void* p, Heap_t* heap);
 
 uint32_t	_kmalloc(uint32_t size, uint8_t align, uint32_t* phys);
 uint32_t	kmalloc(uint32_t size);
-void 		kfree(uint32_t addr);
+void 		kfree(void* addr);

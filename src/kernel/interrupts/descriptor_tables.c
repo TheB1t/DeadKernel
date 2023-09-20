@@ -35,11 +35,11 @@ static void writeTSS(int32_t, uint16_t, uint32_t);
 extern InterruptHandler_t interruptHandlers[];
 
 void initDescriptorTables() {
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	InitGDT();
 	InitIDT();
 	memset(&interruptHandlers, 0, sizeof(InterruptHandler_t) * IDT_ENTRIES_SIZE);
-	ENABLE_INTERRUPTS;
+	ENABLE_INTERRUPTS();
 }
 
 static void InitGDT() {
@@ -175,3 +175,8 @@ static void writeTSS(int32_t num, uint16_t ss0, uint32_t esp0) {
 void setKernelStack(uint32_t stack) {
 	TSSEntry0.esp0 = stack;
 }
+
+uint32_t getKernelStack() {
+	return TSSEntry0.esp0;
+}
+

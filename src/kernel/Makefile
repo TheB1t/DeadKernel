@@ -53,17 +53,19 @@ link: $(OBJFILES)
 	@$(CC) -c $(CINCDIRS) $(CFLAGS) -o $(patsubst %.c,%.o,$<) $<
 
 mountLoop:
-	@sudo losetup /dev/loop100 $(IMAGE_PATH)
+	@sudo losetup -P /dev/loop100 $(IMAGE_PATH)
 
 umountLoop:
 	@sudo losetup -d /dev/loop100
 
 mountImage: 
 	@$(MAKE) mountLoop
+	-@mkdir ${MOUNT_PATH}
 	@sudo mount /dev/loop100p1 $(MOUNT_PATH)
 	
 umountImage:
 	@sudo umount /dev/loop100p1
+	-@rmdir ${MOUNT_PATH}
 	@$(MAKE) umountLoop
 
 pack: remake

@@ -1,5 +1,7 @@
 *.o
 *.sh
+kernel/kernel
+modules/testModule/testModule
 bx_enh_dbg.ini
 serial.txt
 .vscode/

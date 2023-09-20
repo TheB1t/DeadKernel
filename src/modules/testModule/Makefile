@@ -54,7 +54,7 @@ link: $(OBJFILES)
 
 pack: remake
 	$(info [make]	Packing)
-	@sudo losetup /dev/loop100 $(IMAGE_PATH)
+	@sudo losetup -P /dev/loop100 $(IMAGE_PATH)
 	@sudo mount /dev/loop100p1 $(MOUNT_PATH)
 	-@sudo rm $(MOUNT_PATH)/$(BASIC_DIR)/$(EXEC)
 	@sudo cp $(EXEC) $(MOUNT_PATH)/$(BASIC_DIR)

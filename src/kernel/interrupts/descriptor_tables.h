@@ -82,6 +82,7 @@ typedef struct TSSEntry TSSEntry_t;
 
 void initDescriptorTables();
 void setKernelStack(uint32_t stack);
+uint32_t getKernelStack();
 
 extern void isr0();
 extern void isr1();

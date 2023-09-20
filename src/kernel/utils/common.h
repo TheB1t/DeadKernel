@@ -16,8 +16,19 @@ typedef 		 char	int8_t;
 #define PANIC(msg)	kernel_panic(msg)
 #define ASSERT(b)	((b) ? (void)0 : kernel_assert(#b, __FILE__, __LINE__))
 
-#define DISABLE_INTERRUPTS	asm volatile("cli")
-#define ENABLE_INTERRUPTS	asm volatile("sti")
+static uint32_t _interruptsDisable = 0;
+
+#define DISABLE_INTERRUPTS() {				\
+	if (_interruptsDisable == 0)			\
+		asm volatile("cli");				\
+	_interruptsDisable++;					\
+}											\
+
+#define ENABLE_INTERRUPTS() {				\
+	_interruptsDisable--;					\
+	if (_interruptsDisable == 0)			\
+		asm volatile("sti");				\
+}											\
 
 #define LOG(level, format, ...)		printf("[%s] " format "\n", level, ##__VA_ARGS__)
 #define LOG_INFO(format, ...)		LOG("INFO", format, ##__VA_ARGS__)

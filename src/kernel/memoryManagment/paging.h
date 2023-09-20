@@ -33,9 +33,12 @@ void freeFrame(Page_t* page);
 
 uint8_t allocFramesMirrored(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKernel, uint32_t isWriteable);
 void allocFrames(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKernel, uint32_t isWriteable);
+void allocFramesReversed(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKernel, uint32_t isWriteable);
 
 void initPaging();
 PageDir_t* switchPageDir(PageDir_t* dir);
 Page_t* getPage(uint32_t address, uint8_t make, PageDir_t* dir);
+void freeTable(PageTable_t* table);
 void pageFault(CPURegisters_t* regs);
 PageDir_t* cloneDir(PageDir_t* src);
+void freeDir(PageDir_t* dir);

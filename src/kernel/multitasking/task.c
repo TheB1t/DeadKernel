@@ -26,39 +26,43 @@ void		moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size);
 void		yieldInterrupt(CPURegisters_t* regs);
 
 void initTasking() {
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	
 	// globalMutex = mutex_alloc();
 	initQueue(&mainQueue);
 
-	moveStack(getStackBegin(), 0xE0000000, 0x2000);
+	moveStack(getStackBegin(), 0xE0000000, 0x8000);
 
 	kernelTask					= allocTask();
 	
 	kernelTask->pageDir			= currentDir;
-	kernelTask->kernelStack		= _kmalloc(KERNEL_STACK_SIZE, 1, 0);
 	kernelTask->status			= TS_CREATED;
 	kernelTask->time			= 0;
 
 	kernelTask->regs.cs			= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
 	kernelTask->regs.ds			= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
-	kernelTask->regs.ss0		= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
+	kernelTask->regs.val1		= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	kernelTask->regs.cr3		= currentDir->physicalAddr;
-	kernelTask->regs.eflags		= 0x200;
+
 	asm volatile("				\
 				  mov %%cs, %0;	\
 				  mov %%ds, %1;	\
+				  pushf;		\
+				  pop %2;		\
 				":"=r" (kernelTask->regs.cs),
-				  "=r" (kernelTask->regs.ds));
+				  "=r" (kernelTask->regs.ds),
+				  "=r" (kernelTask->regs.eflags));
 
 	runTask(kernelTask);
 
 	registerInterruptHandler(64, &yieldInterrupt);
-	ENABLE_INTERRUPTS;
+	ENABLE_INTERRUPTS();
 }
 
 static void copyContext(CPURegisters_t* dst, CPURegisters_t* src) {
 	#define COPY(dst, src, field)	(dst)->field = (src)->field
+
+	COPY(dst, src, _esp);
 
 	COPY(dst, src, eax);
 	COPY(dst, src, ebx);
@@ -71,18 +75,12 @@ static void copyContext(CPURegisters_t* dst, CPURegisters_t* src) {
 	COPY(dst, src, cr3);
 	COPY(dst, src, ds);
 
-	// First level IRET context
-	serialprintf(COM1, "[copyContext] EIP 0x%08x CS 0x%08x EFLAGS 0x%08x\n", src->eip, src->cs, src->eflags);
 	COPY(dst, src, eip);
 	COPY(dst, src, cs);
 	COPY(dst, src, eflags);
 
-	if ((src->cs & 3) > 0) {
-		// Second level IRET context
-		serialprintf(COM1, "[copyContext] SS0 0x%08x ESP0 0x%08x\n", src->ss0, src->esp0);
-		COPY(dst, src, ss0);
-		COPY(dst, src, esp0);
-	}
+	COPY(dst, src, val0);
+	COPY(dst, src, val1);
 
 	dst->int_no		= 0;
 	dst->err_code	= 0;
@@ -123,7 +121,7 @@ void switchTask(CPURegisters_t* regs) {
 						currentTask->status = TS_RUNNING;
 					}
 				} else {
-					stopTask(currentTask);
+					destroyTask(currentTask);
 				}
 				break;			
 		}
@@ -139,50 +137,40 @@ void switchTask(CPURegisters_t* regs) {
 		currentTask = QUEUE_FIRST_TASK(mainQueue);
 	}
 
-	setKernelStack(currentTask->kernelStack + KERNEL_STACK_SIZE);
-
-	int oldCPL = oldTask->regs.cs & 3;
-	int newCPL = currentTask->regs.cs & 3;
-
-	if (oldCPL != newCPL)
-		serialprintf(COM1, "[switchTask] Privelege %s %d -> %d\n", newCPL < oldCPL ? "escalation" : "downgrading", oldCPL, newCPL);
+	setKernelStack(kernelTask->regs._esp);
 
 	copyContext(regs, &currentTask->regs);
-
-	serialprintf(COM1, "[switchTask] Do switching PID %d -> PID %d\n", oldTask->id, currentTask->id);
-	BREAKPOINT;
 }
 
-Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
-	DISABLE_INTERRUPTS;
-	PageDir_t* clonedDir	= cloneDir(currentDir);
-	
+Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
+	DISABLE_INTERRUPTS();
+
 	Task_t* newTask			= allocTask();
 
-	newTask->pageDir		= clonedDir;
-	newTask->kernelStack	= _kmalloc(KERNEL_STACK_SIZE, 1, 0);
 	newTask->status			= TS_CREATED;
 	newTask->time			= 0;
 	newTask->regs.eax		= hdr->entry;
 	newTask->regs.eip		= (uint32_t)loadEntry;
-	newTask->regs.esp0		= BASE_PROCESS_ESP;
 
-	newTask->regs.cr3		= clonedDir->physicalAddr;
-	if (makeUserProcess) {
-		newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_USER_CODE, PL_RING3);
-		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
-		newTask->regs.ss0   = GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
-	} else {
-		newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
-		newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);	
-		newTask->regs.ss0   = GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
-	}
-	newTask->regs.eflags	= 0x200;
+
+	PageDir_t* clonedDir	= cloneDir(currentDir);
+	
+	newTask->pageDir	= clonedDir;
+	newTask->regs.cr3	= clonedDir->physicalAddr;
+	newTask->regs.val0	= BASE_PROCESS_ESP;
+	newTask->regs.cs	= GDT_DESC_SEG(GDT_DESC_USER_CODE, PL_RING3);
+	newTask->regs.ds	= GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
+	newTask->regs.val1  = GDT_DESC_SEG(GDT_DESC_USER_DATA, PL_RING3);
+	
+	newTask->regs.eflags.r0 = 1;
+	newTask->regs.eflags.r1 = 0;
+	newTask->regs.eflags.r2 = 0;
+	newTask->regs.eflags.IF = 1;
 
 	PageDir_t* savedDir = switchPageDir(clonedDir);
 
 	createStack(BASE_PROCESS_ESP, PROCESS_STACK_SIZE);
-	
+		
 	for (uint32_t i = 0; i < hdr->phnum; i++) {
 		ELF32ProgramHeader_t* ph = ELFProgram(hdr, i);
 		if (ph->type == PT_LOAD) {
@@ -193,7 +181,7 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess) {
 
 	switchPageDir(savedDir);
 	
-	ENABLE_INTERRUPTS;
+	ENABLE_INTERRUPTS();
 	return newTask;
 }
 
@@ -201,7 +189,7 @@ int32_t runTask(Task_t* task) {
 	if (task->status != TS_CREATED || task->status == TS_STOPPED)
 		return -1;
 
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	
 	task->id = task->id ? task->id : nextPID++;
 
@@ -212,7 +200,7 @@ int32_t runTask(Task_t* task) {
 	if (!currentTask)
 		currentTask = task;
 
-	ENABLE_INTERRUPTS;
+	ENABLE_INTERRUPTS();
 	return task->id;	
 }
 
@@ -220,14 +208,26 @@ void stopTask(Task_t* task) {
 	if (task->status == TS_CREATED)
 		return;
 
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	
 	cutTask(task);
 	
 	if (task->status != TS_FINISHED)
 		task->status == TS_STOPPED;
 	
-	ENABLE_INTERRUPTS;
+	ENABLE_INTERRUPTS();
+}
+
+void destroyTask(Task_t* task) {
+	DISABLE_INTERRUPTS();
+
+	stopTask(task);
+
+	freeDir(task->pageDir);
+
+	freeTask(task);
+
+	ENABLE_INTERRUPTS();
 }
 
 void insertTask(TaskQueue_t* queue, Task_t* task) {
@@ -262,7 +262,7 @@ Task_t* allocTask() {
 }
 
 void freeTask(Task_t* task) {
-	kfree((uint32_t)task);
+	kfree(task);
 }
 
 uint32_t getStackBegin() {
@@ -274,8 +274,7 @@ uint32_t getStackBegin() {
 }
 
 void createStack(uint32_t newStart, uint32_t size) {
-	for (uint32_t i = newStart; i >= newStart - size; i -= PAGE_SIZE)
-		allocFrame(getPage(i, 1, currentDir), 0, 1);
+	allocFramesReversed(newStart - size, newStart, 1, 0, 1);
 
 	uint32_t pdAddr;
 	asm volatile("mov %%cr3, %0" : "=r" (pdAddr));
@@ -297,7 +296,7 @@ void cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, uint32_t* E
 
 	stackFrame_t* stk = (stackFrame_t*)newEBP;
 	
-	while (stk->ebp) {
+	while ((uint32_t)stk != newStart) {
 		stk->ebp = (stackFrame_t*)((uint32_t)stk->ebp + offset);
 		stk = stk->ebp;
 	}

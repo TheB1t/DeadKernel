@@ -13,9 +13,7 @@ static void timerCallback(CPURegisters_t* regs) {
 	tick++;
 	uptime++;
 
-	INTERVAL(lastTaskTick, 10)
-		switchTask(regs);
-	}
+	switchTask(regs);
 }
 
 void initSysTimer() {

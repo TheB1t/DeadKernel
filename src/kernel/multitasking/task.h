@@ -27,12 +27,11 @@ typedef enum {
 } Status_t;
 		
 typedef struct task {
-	CPURegisters_t	regs;			//0
-	int32_t			id;				//40
-	PageDir_t*		pageDir;		//44
-	Status_t		status;			//48
-	uint32_t		kernelStack;	//52
-	uint32_t		entry;			//56
+	CPURegisters_t	regs;
+	int32_t			id;
+	PageDir_t*		pageDir;
+	Status_t		status;
+	uint32_t		entry;
 	int32_t			exitcode;
 	uint32_t		time;
 	struct task*	next;
@@ -43,9 +42,10 @@ typedef Task_t TaskQueue_t;
 
 void		initTasking();
 void		switchTask(CPURegisters_t* regs);
-Task_t*		makeTaskFromELF(ELF32Header_t* hdr, uint8_t makeUserProcess);
+Task_t*		makeTaskFromELF(ELF32Header_t* hdr);
 int32_t		runTask(Task_t* task);
 void		stopTask(Task_t* task);
+void 		destroyTask(Task_t* task);
 Task_t*		allocTask();
 void		freeTask(Task_t* task);
 void		yield();

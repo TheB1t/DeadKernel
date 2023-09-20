@@ -34,13 +34,13 @@ int32_t kernel_main() {
 		memset(devices, 0, sizeof(PCIDevice_t) * 256);
 
 		uint32_t count = PCIDirectScan(devices);
-		LOG_INFO("Found %d devices!\n", count);
+		LOG_INFO("Found %d devices!", count);
 		
-		PCIDevice_t* device = devices;
-		while (device->vendor) {
-			LOG_INFO("	%03d:%02d:%01d [%04x:%04x] %s", device->bus, device->dev, device->fn, device->vendor, device->device, PCIGetClassName(device->class));
-			device++;
-		}
+		// PCIDevice_t* device = devices;
+		// while (device->vendor) {
+		// 	LOG_INFO("	%03d:%02d:%01d [%04x:%04x] %s", device->bus, device->dev, device->fn, device->vendor, device->device, PCIGetClassName(device->class));
+		// 	device++;
+		// }
 	} else {
 		LOG_INFO("BIOS32 instance not found!");
 	}
@@ -55,24 +55,18 @@ int32_t kernel_main() {
 	initSysCalls();
 	initTasking();
 	
-	Task_t* t1 = makeTaskFromELF(testModule, 1);
+	DISABLE_INTERRUPTS();
+	Task_t* t1 = makeTaskFromELF(testModule);
 	runTask(t1);
-
-	/* TODO: If run 2 tasks in user-mode paralelly, we have a GPF */
-	Task_t* t2 = makeTaskFromELF(testModule, 1);
-	runTask(t2);
-	//*/
-
 
 	uint32_t pid = getPID();
 
-	DISABLE_INTERRUPTS;
 	LOG_INFO("Message from kernel! PID %d Ring %d", pid, getCPL());
-	ENABLE_INTERRUPTS;
+	ENABLE_INTERRUPTS();
 
 	sleep(2000);
 
-	printf("Upime %d seconds\n", getUptime() / 1000);
+	LOG_INFO("Upime %d seconds", getUptime() / 1000);
 
 	return 0xDEADBABA;
 }

@@ -128,20 +128,20 @@ void kernel_panic(const char* message) {
 	}
 	
 	panicCounter++;
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	printf("[Kernel Panic] %s at address 0x%08x\n", message, 0x0);
 	stackTrace(8);
 	for(;;);
 }
 
 void kernel_assert(const char* message, const char* file, uint32_t line) {
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	printf("[Assertion Failed] %s (%s:%d)", message, file, line);
 	for(;;);
 }
 
 void kernel_halt() {
-	DISABLE_INTERRUPTS;
+	DISABLE_INTERRUPTS();
 	uint8_t good = 0x02;
 	while (good & 0x02)
 		good = inb(0x64);

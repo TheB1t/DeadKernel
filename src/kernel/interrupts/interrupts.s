@@ -78,31 +78,35 @@ IRQ		14, 46
 IRQ		15, 47
 
 ; typedef struct {
-; 	uint32_t	ds;			;; - 30
-; 	uint32_t	cr3;		;; - 26
-; 	uint32_t	edi;		;; - 24
-; 	uint32_t	esi;		;; - 20
-; 	uint32_t	ebx;		;; - 16
-; 	uint32_t	edx;		;; - 12
-; 	uint32_t	ecx;		;; - 8
-; 	uint32_t	eax;		;; - 4
-; 	uint32_t	ebp;		;; - 0
+; 	uint32_t	_esp;		;; - 40 (-64)
+
+; 	uint32_t	ds;			;; - 36 (-60)
+; 	uint32_t	cr3;		;; - 32 (-56)
+; 	uint32_t	edi;		;; - 28 (-52)
+; 	uint32_t	esi;		;; - 24 (-48)
+; 	uint32_t	ebx;		;; - 20 (-44)
+; 	uint32_t	edx;		;; - 16 (-40)
+; 	uint32_t	ecx;		;; - 12 (-36)
+; 	uint32_t	eax;		;; - 8 (-32)
+; 	uint32_t	ebp;		;; - 4 (-28)
 
 ;	WE ARE HERE
-; 	uint32_t	err_code;	;; + 4
-; 	uint32_t	int_no;		;; + 8
+; 	uint32_t	err_code;	;; + 0 (-24)
+; 	uint32_t	int_no;		;; + 4 (-20)
 
 ; 	// IRET Main
-; 	uint32_t	eip;		;; + 12
-; 	uint32_t	cs;			;; + 16
-; 	uint32_t	eflags;		;; + 20
+; 	uint32_t	eip;		;; + 8 (-16)
+; 	uint32_t	cs;			;; + 12 (-12)
+; 	uint32_t	eflags;		;; + 16 (-8)
 
 ; 	// IRET Second
-; 	uint32_t	esp0;		;; + 24
-; 	uint32_t	ss0;		;; + 26
+; 	uint32_t	val0;		;; + 20 (-4)
+; 	uint32_t	val1;		;; + 24 (-0)
 ; } CPURegisters_t;
 
 struc CPURegs
+	._esp: resd 1
+
 	._ds: resd 1
 	._cr3: resd 1
 	._edi: resd 1
@@ -122,13 +126,13 @@ struc CPURegs
 	._eflags: resd 1
 
 	; iret second
-	._esp0: resd 1
-	._ss0: resd 1
+	._val0: resd 1	; ESP0
+	._val1: resd 1	; SS0
 endstruc
 
 [EXTERN MainInterruptHandler]
 ASMInterruptPreHandler:
-    sub esp, 36
+    sub esp, 40
 	
 	mov [esp + CPURegs._eax], eax
 	mov [esp + CPURegs._ebx], ebx
@@ -137,6 +141,11 @@ ASMInterruptPreHandler:
 	mov [esp + CPURegs._esi], esi
 	mov [esp + CPURegs._edi], edi
 	mov [esp + CPURegs._ebp], ebp
+	xor eax, eax
+	mov eax, esp
+	add eax, 40
+	add eax, 20
+	mov [esp + CPURegs._esp], eax
 	xor eax, eax
 	mov ax, ds
 	mov [esp + CPURegs._ds], eax
@@ -169,7 +178,7 @@ ASMInterruptPreHandler:
 	mov cr3, eax
 	mov eax, [esp + CPURegs._eax]
 
-	add esp, 44 ; remove crap stuff
+	add esp, 48 ; remove crap stuff
 
     ; xchg bx, bx
 	sti

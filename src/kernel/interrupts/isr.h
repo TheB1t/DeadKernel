@@ -21,6 +21,33 @@
 #define IRQ15 47
 
 typedef struct {
+	uint32_t	CF   : 1;
+	uint32_t	r0   : 1;
+	uint32_t	PF   : 1;
+	uint32_t	r1   : 1;
+	uint32_t	AF   : 1;
+	uint32_t	r2   : 1;
+	uint32_t	ZF   : 1;
+	uint32_t	SF   : 1;
+	uint32_t	TF   : 1;
+	uint32_t	IF   : 1;
+	uint32_t	DF   : 1;
+	uint32_t	OF   : 1;
+	uint32_t	IOPL : 2;
+	uint32_t	NT   : 1;
+	uint32_t	MD   : 1;
+	uint32_t	RF   : 1;
+	uint32_t	VM   : 1;
+	uint32_t	AC   : 1;
+	uint32_t    VIF  : 1;
+	uint32_t	VIP  : 1;
+	uint32_t	ID   : 1;
+	uint32_t    r3   : 10;
+} CPUEFLAGS_t;
+
+typedef struct {
+	uint32_t	_esp;
+
 	uint32_t	ds;
 	uint32_t	cr3;
 	uint32_t	edi;
@@ -37,11 +64,11 @@ typedef struct {
 	// IRET Main
 	uint32_t	eip;
 	uint32_t	cs;
-	uint32_t	eflags;
+	CPUEFLAGS_t eflags;
 
 	// IRET Second
-	uint32_t	esp0;
-	uint32_t	ss0;
+	uint32_t	val0;
+	uint32_t	val1;
 } CPURegisters_t;
 
 extern uint32_t interruptedEIP;

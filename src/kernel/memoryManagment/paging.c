@@ -123,6 +123,17 @@ void allocFrames(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKern
 }
 
 /*
+ *	Maps virtual memory to free physical frames (reversed)
+ */
+void allocFramesReversed(uint32_t start, uint32_t end, uint8_t makePage, uint32_t isKernel, uint32_t isWriteable) {
+	uint32_t len = end - start;
+	// LOG_INFO("Allocating [%08x:%08x] memory region", start, end);
+	for (uint32_t i = start + len; i > start; i -= PAGE_SIZE)
+		allocFrame(getPage(i, makePage, currentDir), isKernel, isWriteable);
+}
+
+
+/*
  *	Maps virtual memory to free physical frames
  */
 void freeFrames(uint32_t start, uint32_t end) {
@@ -152,7 +163,7 @@ void allocKernelSectionByName(uint8_t* secName) {
  *	marks up the memory used by the kernel for its use
  */
 void initPaging() {
-	uint32_t memEndPageMB = 32;
+	uint32_t memEndPageMB = 256;
 	uint32_t memEndPage = memEndPageMB * 1024 * 1024;
 
 	nframes = ADDR2FRAME(memEndPage);
@@ -240,6 +251,19 @@ Page_t* getPage(uint32_t address, uint8_t make, PageDir_t* dir) {
 }
 
 /*
+ *	Releases all frames occupied by the page table
+ */
+void freeTable(PageTable_t* table) {
+    for (uint32_t i = 0; i < PAGES_IN_TABLE; i++) {
+        if (table->pages[i].frame) {
+            freeFrame(&table->pages[i]);
+        }
+    }
+
+    kfree(table);
+}
+
+/*
  *	Page fault interrupt handler
  */
 void pageFault(CPURegisters_t* regs) {
@@ -317,4 +341,17 @@ PageDir_t* cloneDir(PageDir_t* src) {
 		}
 	}
 	return dir;
+}
+
+/*
+ *  Releases all resources occupied by the page directory
+ */
+void freeDir(PageDir_t* dir) {
+    for (uint32_t i = 0; i < TABLES_IN_DIR; i++) {
+        if (dir->tables[i])
+            if (dir->tables[i] != kernelDir->tables[i])
+                freeTable(dir->tables[i]);
+    }
+
+    kfree(dir);
 }
