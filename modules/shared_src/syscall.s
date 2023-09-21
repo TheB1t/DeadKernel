@@ -12,13 +12,16 @@
 	ret
 %endmacro
 
-SYSTEMCALL 0, screenGetColor
-SYSTEMCALL 1, screenSetColor
-SYSTEMCALL 2, screenPutChar
-SYSTEMCALL 3, screenPutString
-SYSTEMCALL 4, screenClear
+SYSTEMCALL 0, getPID
 
-SYSTEMCALL 5, getPID
+SYSTEMCALL 1, screenGetColor
+SYSTEMCALL 2, screenSetColor
+SYSTEMCALL 3, screenPutChar
+SYSTEMCALL 4, screenPutString
+SYSTEMCALL 5, screenClear
+
+SYSTEMCALL 6, keyboardReadReady
+SYSTEMCALL 7, keyboardGetChar
 
 [GLOBAL yield]
 yield:

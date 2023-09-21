@@ -1,11 +1,6 @@
 #include <common.h>
 #include <syscall.h>
 
-uint32_t getCPL() {
-	uint32_t ss;	asm volatile("mov %%ss, %0" : "=r" (ss));
-	return ss & 3;
-}
-
 int32_t main() {
 	uint32_t esp;	asm volatile("mov %%esp, %0" : "=r" (esp));
 	uint32_t ebp;	asm volatile("mov %%ebp, %0" : "=r" (ebp));

@@ -2,6 +2,7 @@
 #include <interrupts/isr.h>
 #include <io/screen.h>
 #include <multitasking/task.h>
+#include <io/keyboard.h>
 
 extern uint32_t callSysCall(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, void*);
 static void SysCallHandler();
@@ -19,13 +20,16 @@ void addSysCall(void* call) {
 void initSysCalls() {
 	memset(syscalls, 0, sizeof(syscalls));
 	
+	addSysCall(&getPID);
+
 	addSysCall(&screenGetColor);
 	addSysCall(&screenSetColor);
 	addSysCall(&screenPutChar);
 	addSysCall(&screenPutString);
 	addSysCall(&screenClear);
 
-	addSysCall(&getPID);
+    addSysCall(&keyboardReadReady);
+    addSysCall(&keyboardGetChar);
 
 	registerInterruptHandler(128, &SysCallHandler);
 }
@@ -58,5 +62,5 @@ void SysCallHandler(CPURegisters_t* regs) {
 			"r" (regs->ebx),
 			"r" (location)
 	);
-	regs->eax = ret;	
+	regs->eax = ret;
 }

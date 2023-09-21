@@ -123,9 +123,7 @@ void itoa(char* result, uint32_t base, int32_t value) {
 
 void sleep(uint32_t ms) {
 	uint32_t targetTicks = getSysTimerTicks() + ms;
-	while (getSysTimerTicks() < targetTicks) {
-		yield();
-	}
+	while (getSysTimerTicks() < targetTicks);
 }
 
 void kernel_warn(const char* message) {

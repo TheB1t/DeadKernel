@@ -40,8 +40,6 @@ function mount_loop() {
 #  Install grub
 function install_grub() {
     sudo grub-install --root-directory=${MOUNT_DIR} --boot-directory=${MOUNT_DIR}/boot --no-floppy --modules="normal part_msdos ext2 multiboot" /dev/${LOOP_DEV}
-
-    sudo cp ${GRUB_CFG_PATH} ${MOUNT_DIR}/boot/grub/
 }
 
 #  Umount loop device
@@ -60,7 +58,7 @@ function main() {
     local action=$1; shift
 
 	case "$action" in
-	"pack")
+    "init")
         remove_image
         create_image
         create_loop
@@ -68,10 +66,26 @@ function main() {
         mount_loop
         install_grub
         
+        sudo mkdir ${MOUNT_DIR}/modules
+
+        umount_loop
+        remove_loop
+        ;;
+	"pack")
+        create_loop
+        mount_loop
+
+        sudo rm ${MOUNT_DIR}/boot/grub/grub.cfg
+        sudo cp ${GRUB_CFG_PATH} ${MOUNT_DIR}/boot/grub/
+        
         cmake -B build .
         make -C build
 
-        sudo cp -r build/bin/* ${MOUNT_DIR}/
+        sudo rm ${MOUNT_DIR}/kernel
+        sudo rm ${MOUNT_DIR}/modules/*
+
+        sudo cp build/bin/kernel ${MOUNT_DIR}/
+        sudo cp -r build/bin/modules/* ${MOUNT_DIR}/modules/
 
         umount_loop
         remove_loop

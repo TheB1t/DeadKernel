@@ -75,17 +75,20 @@ int32_t kernel_main() {
 
 	initSysCalls();
 	initTasking();
-	
-	DISABLE_INTERRUPTS();
+    
+    LOG_INFO("Keyboard: %s", initKeyboard() == 0 ? "initialized" : "initialization failed");
+
 	Task_t* t1 = makeTaskFromELF(testModule);
 	runTask(t1);
 
 	uint32_t pid = getPID();
 
+    sleep(2000);
 	LOG_INFO("Message from kernel! PID %d Ring %d", pid, getCPL());
-	ENABLE_INTERRUPTS();
 
-	sleep(2000);
+    while (true) {
+        sleep(2000);
+    }
 
 	LOG_INFO("Upime %d seconds", getUptime() / 1000);
 

@@ -62,7 +62,7 @@ int32_t main(multiboot_t* mboot) {
 	LOG_INFO("[GRUB] Loaded %d modules", mboot->mods_count);
 	multiboot_mods_t* mods = (multiboot_mods_t*)mboot->mods_addr;
 	if (mboot->mods_count > 0) {
-		testModule = (ELF32Header_t*)mods[0].mod_start;
+		testModule = (ELF32Header_t*)mods[1].mod_start;
 		placementAddress = mods[mboot->mods_count - 1].mod_end;
 	}
 

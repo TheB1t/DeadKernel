@@ -13,6 +13,9 @@ typedef 		 char	int8_t;
 	asm volatile("xchgw %bx, %bx;");	\
 }
 
+uint32_t	getCPL();
+
+char        getch();
 
 void 		memcpy(void* dest, const void* src, uint32_t len);
 void 		memset(void* dest, uint8_t val, uint32_t len);

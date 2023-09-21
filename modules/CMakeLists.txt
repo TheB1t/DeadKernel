@@ -22,7 +22,9 @@ FILE(GLOB_RECURSE SHARED_ASM_FILES "shared_src/*.s")
 INCLUDE_DIRECTORIES(shared_include)
 
 ADD_SUBDIRECTORY(testModule)
+ADD_SUBDIRECTORY(shell)
 
 ADD_CUSTOM_TARGET(modules
     DEPENDS testModule
+    DEPENDS shell
 )

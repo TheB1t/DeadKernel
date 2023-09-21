@@ -1,6 +1,18 @@
 #include <common.h>
 #include <syscall.h>
 
+uint32_t getCPL() {
+	uint32_t ss;	asm volatile("mov %%ss, %0" : "=r" (ss));
+	return ss & 3;
+}
+
+char getch() {
+    while (!keyboardReadReady());
+        yield();
+
+    return keyboardGetChar();
+}
+
 void memcpy(void *dest, const void *src, uint32_t len) {
     const uint8_t* sp = (const uint8_t*)src;
     uint8_t* dp = (uint8_t*)dest;
