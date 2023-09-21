@@ -1,5 +1,7 @@
 # DeadKernel
 
+__Version:__ alpha-0.2
+
 ### About DeadKernel
 
 DeadKernel will be a fully modular kernel in the future, almost every part of it will be presented as a module that can be replaced with another with more/less functionality, optimization, etc. But right now it's a simple core providing basic functionality for development, and nothing more.
@@ -16,78 +18,76 @@ For debugging kernel:
 - gdb
 - real hardware
 
-### What implemented now
+For building:
+- cmake
 
-- Loading from Multiboot-compliant bootloader
-- GDT, LDT, IDT cofiguration
-- Simply timing support using PIT timer
-- Basic support of paging mode
-	- Frame/page alloc/free
-	- Mirror allocating
-	- Page directory cloning
-	- Primitive page-fault handling
-	- Page directory switching
-- Simply memory manager
-	- Alloc/free memory from heap
-- Task sheduler
-	- 6 task states
-	- Creating task from ELF image
-	- Switching between tasks have different privilege levels (with some errors)
-	- Detecting task completion
-	- Halt CPU if all tasks finished (includes kernel)
-	- Yielding
-- Simply PCI bus driver
-- Basic screen output support
-	- Half-functionally printf
-- Stack trace support
-	- If GRUB (or other Multiboot-compliant bootloader) loads section table, stacktrace printed with function names
-- Basic syscalls support
-- Serial port driver
-- Keyboard driver
-- ELF files reading
+### What has been implemented now and what is planned
 
-### What will be implemented in the future
-
-- Task sheduling
-	- Forking
-- ACPI support
-	- HPET timer
-- Module loading
-- All already implemented drivers as a module (including minimal drivers)
-- Simple filesystem driver
-- Simple initrd
-- VESA driver
-- Ethernet driver
-- Network stack
+- [x] Loading from Multiboot-compliant bootloader
+- [x] `GDT`, `LDT`, `IDT` cofiguration
+- [x] Simply timing support using `PIT timer`
+- [x] Basic support of paging mode
+	- [x] Allocation/freeing of physical frames
+	- [x] Allocation/freeing of pages
+	- [x] Mirror allocating
+	- [x] Page directory cloning
+	- [x] Page directory freeing
+	- [x] Primitive page-fault handling
+	- [x] Page directory switching
+- [x] Simply memory manager
+	- [x] Alloc/free memory from kernel heap
+- [x] Task sheduler
+	- [x] 7 task states
+	- [x] Creating task from ELF image
+	- [x] Switching between tasks have different privilege levels
+	- [x] Detecting task completion
+	- [x] Halt CPU if all tasks finished (includes kernel)
+	- [x] Yielding
+	- [ ] Forking
+- [x] Simply PCI bus driver
+- [x] Basic screen output support
+	- [x] Half-functionally printf
+- [x] Stack trace support
+	- [x] If GRUB (or other Multiboot-compliant bootloader) loads section table, stacktrace printed with function names
+- [x] Basic syscalls support
+- [x] Serial port driver
+- [x] Keyboard driver
+- [x] ELF files reading
+- [ ] ACPI support
+	- [ ] HPET timer
+- [ ] Module loading
+- [ ] All already implemented drivers as a module (including minimal drivers)
+- [ ] Simple filesystem driver
+- [ ] Simple initrd
+- [ ] VESA driver
+- [ ] Ethernet driver
+- [ ] Network stack
 
 ### Requirements for build and run
 
+1. Install this packages (if you using debian-based system):
 ```bash
-# Install this packages (if you using debian-based system)
-$ sudo apt -y install qemu qemu-system nasm gcc binutils make
+sudo apt -y install qemu qemu-system nasm gcc binutils make cmake
 ```
 
-### How to pack/run it
+### How to build/pack/run it
 
+1. Build and pack kernel into `disk.img`:
 ```bash
-# Previous set part number for loop module
-$ sudo modprobe -r loop
-$ sudo modprobe loop max_part=10
-
-# For pack module in image
-$ cd src/modules/testModule
-$ make pack
-# Module automaticly will be packed to image
-
-# For pack kernel in image
-$ cd src/kernel
-$ make pack
-
-# For run kernel use
-$ cd src/kernel
-$ make run
-# Kernel automaticly will be packed in image, and running using qemu
+./utils.sh pack
 ```
+
+2. Run using `qemu`:
+```bash
+sudo qemu-system-x86_64 -hda disk.img
+```
+
+or you can run the build manually using:
+```bash
+cmake -B build .
+make -C build
+```
+the compiled binaries will be located in the `build/bin` folder.
 
 ### How to contact me
 
