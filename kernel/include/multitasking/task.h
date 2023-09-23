@@ -6,7 +6,6 @@
 #include <interrupts/descriptor_tables.h>
 #include <interrupts/isr.h>
 #include <fs/elf/elf.h>
-#include <io/serial.h>
 
 #define KERNEL_STACK_SIZE			(2048)
 
@@ -40,8 +39,13 @@ typedef struct task {
 
 typedef Task_t TaskQueue_t;
 
+extern Task_t* kernelTask;
+extern Task_t* currentTask;
+
 void		initTasking();
 void		switchTask(CPURegisters_t* regs);
+void		copyFromUser(void* ptr0, void* userPtr, uint32_t size);
+void		copyToUser(void* ptr0, void* userPtr, uint32_t size);
 Task_t*		makeTaskFromELF(ELF32Header_t* hdr);
 int32_t		runTask(Task_t* task);
 void		stopTask(Task_t* task);

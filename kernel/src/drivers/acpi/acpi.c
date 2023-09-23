@@ -2,15 +2,15 @@
 #include <io/screen.h>
 #include <memory_managment/paging.h>
 
-#define RSDP_SIGNATURE  "RSD PTR "
-#define RSDP2_SIGNATURE "XSDT"
-#define FACP_SIGNATURE  "FACP"
-
 static inline uint8_t checksum(const uint8_t *ptr, uint32_t size) {
     uint8_t sum = 0;
     for (uint32_t i = 0; i < size; i++)
         sum += ptr[i];
     return sum;
+}
+
+static inline bool doChecksum(SDTHeader_t* header) {
+    return checksum((uint8_t*)header, header->length) == 0;
 }
 
 extern RSDP_t* ll_find_rsdp(void);
@@ -21,7 +21,7 @@ RSDP_t* findRSDP(void) {
         return NULL;
 
     if (strncmp((char*)&ptr->signature, RSDP_SIGNATURE, 8) == 0) {
-        if (checksum(ptr, sizeof(RSDP_t)) == 0)
+        if (checksum((uint8_t*)ptr, sizeof(RSDP_t)) == 0)
             return (RSDP_t *)ptr;
     }
 
@@ -46,85 +46,92 @@ RSDT_t* findRSDT(RSDP_t* rsdp) {
         return NULL;
 
     RSDT_t* rsdt = (RSDT_t*)rsdp->RSTDAddress;
-    allocFramesMirrored(rsdp->RSTDAddress, rsdp->RSTDAddress + sizeof(RSDT_t), 1, 0, 1);
-
-    if (strncmp((char*)&rsdt->header.signature, RSDP_SIGNATURE, 4) == 0) {
-        if (checksum((uint8_t*)rsdt, sizeof(RSDT_t)) == 0)
+    if (strncmp((char*)&rsdt->header.signature, RSDT_SIGNATURE, 4) == 0) {
+        if (doChecksum(&rsdt->header))
             return rsdt;
     }
-
-    freeFrames(rsdp->RSTDAddress, rsdp->RSTDAddress + sizeof(RSDT_t));
     return NULL;     
 }
 
+XSDT_t* findXSDT(RSDP2_t* rsdp) {
+    if (rsdp == NULL)
+        return NULL;
 
-FADT_t* findFACP(RSDT_t* rootSDT) {
-    int entries = (rootSDT->header.length - sizeof(rootSDT->header)) / 4;
-    
-    LOG_INFO("RootSDT: 0x%08x", rootSDT);
-    for (int i = 0; i < entries; i++) {
-        uint32_t* entry0 = &rootSDT->sdt0;
-        SDT_Header_t* header = (SDT_Header_t *)entry0[i];     
-        LOG_INFO("ENTRY0: 0x%08x HEADER: 0x%08x I: %d", entry0, header, i);
-
-        // allocFramesMirrored(entry0[i], entry0[i] + sizeof(FADT_t), 1, 0, 1); 
-
-        if (strncmp((char*)header->signature, FACP_SIGNATURE, 4))
-            return (FADT_t*)header;
-
-        // freeFrames(entry0[i], entry0[i] + sizeof(FADT_t));
+    XSDT_t* xsdt = (XSDT_t*)rsdp->XSDTAddress.low;    
+    if (strncmp((char*)&xsdt->header.signature, XSDT_SIGNATURE, 4) == 0) {
+        if (doChecksum(&xsdt->header))
+            return xsdt;
     }
- 
-    // No FACP found
+    return NULL;     
+}
+
+void* findInSDT(char* signature, SDTHeader_t* header) {
+    
+    if (strncmp((char*)&header->signature, XSDT_SIGNATURE, 4) == 0) {
+        XSDT_t* xsdt = (XSDT_t*)header;
+        uint64_t* table = &xsdt->entry0;
+        int entries = (xsdt->header.length - sizeof(uint64_t)) / sizeof(uint64_t);
+        
+        for (int i = 0; i < entries; i++) {
+            SDTHeader_t* header = (SDTHeader_t*)table[i].low;
+
+            if (strncmp((char*)header->signature, signature, 4) == 0)
+                if (doChecksum(header))
+                    return (void*)header;
+        }
+    } else {
+        RSDT_t* rsdt = (RSDT_t*)header;
+        uint32_t* table = &rsdt->entry0;
+        int entries = (rsdt->header.length - sizeof(uint32_t)) / sizeof(uint32_t);
+
+        for (int i = 0; i < entries; i++) {
+            SDTHeader_t* header = (SDTHeader_t*)table[i];
+
+            if (strncmp((char*)header->signature, signature, 4) == 0)
+                if (doChecksum(header))
+                    return (void*)header;
+        }
+    }
+
     return NULL;
 }
 
-// uint8_t *find_table(RSDP2_t* rsdp2, const char *signature) {
-//     RSDP2_t *rsdp2 = find_rsdp2();
-//     if (rsdp2 == NULL)
-//         return NULL;
-//     // Search for the table signature.
-//     uint8_t *start = (uint8_t *)(uintptr_t)rsdp2->XSDTAddress[0];
-//     uint8_t *end = start + rsdp2->length;
-//     for (uint8_t *ptr = start; ptr < end; ptr += 4) {
-//         if (strncmp((char *)ptr, signature, 4) == 0)
-//             return ptr;
-//     }
+void* printSDT(SDTHeader_t* header) {
+    uint8_t signature[5];
 
-//     return NULL;
-// }
-
-// int get_table_length(const uint8_t *table) {
-//     return *(uint32_t *)(table + 4);
-// }
-
-// uint8_t *get_table_entry(const uint8_t *table, int index) {
-//     int entry_count = (get_table_length(table) - sizeof(uint32_t)) / sizeof(uint32_t);
-//     if (index < 0 || index >= entry_count)
-//     return NULL;
-//     return *(uint8_t **)(table + sizeof(uint32_t) + index * sizeof(uint32_t));
-// }
-
-// int get_table_entry_count(const uint8_t *table) {
-//     return (get_table_length(table) - sizeof(uint32_t)) / sizeof(uint32_t);
-// }
-
-// const char *acpi_get_version(void) {
-//     RSDP2_t *rsdp2 = find_rsdp2();
-//     if (rsdp2 == NULL)
-//         return NULL;
-
-//     return rsdp2->firstPart.revision == 0 ? "1.0" : "2.0 or later";
-// }
-
-// const char *acpi_get_firmware_vendor(void) {
-//     uint8_t *rsdt = find_table(RSDT_SIGNATURE);
-//     if (rsdt == NULL)
-//         return NULL;
-
-//     uint8_t *entry = get_table_entry(rsdt, 0);
-//     if (entry == NULL)
-//         return NULL;
+    if (strncmp((char*)&header->signature, XSDT_SIGNATURE, 4) == 0) {
+        XSDT_t* xsdt = (XSDT_t*)header;
+        uint64_t* table = &xsdt->entry0;
+        int entries = (xsdt->header.length - sizeof(uint64_t)) / sizeof(uint64_t);
         
-//     return (const char *)entry + 4;
-// }
+        printf("XSDT entries: ");
+
+        for (int i = 0; i < entries; i++) {
+            SDTHeader_t* header = (SDTHeader_t*)table[i].low;
+            
+            memcpy((void*)signature, (void*)header->signature, 4);
+            signature[4] = '\0';
+
+            printf("%s ", signature);
+        }
+    } else {
+        RSDT_t* rsdt = (RSDT_t*)header;
+        uint32_t* table = &rsdt->entry0;
+        int entries = (rsdt->header.length - sizeof(uint32_t)) / sizeof(uint32_t);
+
+        printf("RSDT entries: ");
+
+        for (int i = 0; i < entries; i++) {
+            SDTHeader_t* header = (SDTHeader_t*)table[i];
+
+            memcpy((void*)signature, (void*)header->signature, 4);
+            signature[4] = '\0';
+
+            printf("%s ", signature);
+        }
+    }
+
+    printf("\n");
+
+    return NULL;
+}

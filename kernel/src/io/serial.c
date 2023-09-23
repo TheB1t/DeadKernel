@@ -113,6 +113,7 @@ void serialprintf(uint16_t port, const char* format, ...) {
 
 				case 'c':
 					serialWriteByte(port, *((int*) arg++));
+					break;
 				
 				default:
 					if (*(format - 2) == '%') {

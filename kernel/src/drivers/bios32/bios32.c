@@ -53,15 +53,17 @@ uint32_t BIOS32GetService(uint32_t service) {
 	EBX - physical service address
 	ECX - service segment length
 	EDX - service entry point
-*/
+*/	
+	DISABLE_INTERRUPTS();
+
 	asm volatile("		\
-		cli;			\
-		lcall *(%%edi);	\
-		sti				"
+		lcall *(%%edi);	"
 		:"=a" (return_code), "=b" (address), "=c" (length), "=d" (entry) 
 		:"0" (service), "1" (0), "D" (&BIOS32Indirect)
 	);
 
+	ENABLE_INTERRUPTS();
+	
 	if (!return_code)
 		return address + entry;
 

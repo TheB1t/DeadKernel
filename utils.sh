@@ -4,6 +4,7 @@ IMAGE_FILE=disk
 IMAGE_SIZE_MB=32
 LOOP_DEV=loop100
 MOUNT_DIR=image
+PXE_DIR=/var/lib/tftpboot
 GRUB_CFG_PATH=grub.cfg
 
 
@@ -90,6 +91,22 @@ function main() {
         umount_loop
         remove_loop
 	    ;;
+    "pack_pxe")
+        sudo rm ${PXE_DIR}/boot/grub/grub.cfg
+        sudo cp ${GRUB_CFG_PATH} ${PXE_DIR}/boot/grub/
+
+        cmake -B build .
+        make -C build
+
+        sudo rm ${PXE_DIR}/kernel
+        sudo rm ${PXE_DIR}/modules/*
+
+        sudo cp build/bin/kernel ${PXE_DIR}/
+        sudo cp -r build/bin/modules/* ${PXE_DIR}/modules/        
+        ;;
+    "run")
+        sudo qemu-system-x86_64 -hda ${IMAGE_FILE}.img -machine q35 -no-reboot -serial stdio
+        ;;
 	"mount")
         create_loop
         mount_loop

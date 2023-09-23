@@ -1,7 +1,6 @@
 #pragma once
 
 #include <utils/common.h>
-#include <io/screen.h>
 
 typedef		uint32_t	ELF32_Addr_t;
 typedef		uint32_t	ELF32_Off_t;

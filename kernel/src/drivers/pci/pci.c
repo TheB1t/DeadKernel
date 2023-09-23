@@ -2,6 +2,17 @@
 #include <drivers/bios32/bios32.h>
 
 static AddrIndirect PCIBIOSIndirect = { 0, 0 };
+static uint8_t PCI_HWMech, PCI_majorVer, PCI_minorVer;
+
+uint8_t PCIInit() {
+	if (PCICheckSupport(&PCI_majorVer, &PCI_minorVer, &PCI_HWMech) == PCI_OP_SUCC) {
+		LOG_INFO("[PCI] PCI BIOS found %02x ver %02x.%02x", PCI_HWMech, PCI_majorVer, PCI_minorVer);
+		return PCI_OP_SUCC;
+	} else {
+		LOG_INFO("[PCI] BIOS32 instance not found!");
+		return PCI_OP_FAIL;
+	}
+}
 
 uint8_t PCICheckSupport(uint8_t* majorVer, uint8_t* minorVer, uint8_t* HWMech) {
 	uint32_t signature, eax, ebx, ecx, PCIBIOSEntry;
@@ -23,18 +34,20 @@ uint8_t PCICheckSupport(uint8_t* majorVer, uint8_t* minorVer, uint8_t* HWMech) {
 		BL - Interface minor version number
 		CL - Last PSI bus number
 */
+		DISABLE_INTERRUPTS();
+
 		asm volatile("		\
-			cli;			\
 			lcall *(%%edi);	\
 			jc 1f;			\
 			xor %%ah, %%ah;	\
-			1:				\
-			sti				"
+			1:				"
 			: "=d" (signature), "=a" (eax), "=b" (ebx), "=c" (ecx)
 			: "1" (PCIBIOS_PCI_BIOS_PRESENT), "D" (&PCIBIOSIndirect)
 			: "memory"
 		);
 
+		ENABLE_INTERRUPTS();
+		
 		status		= (eax >> 8) & 0xFF;
 		*HWMech		= eax & 0xFF;
 		*majorVer	= (ebx >> 8) & 0xFF;

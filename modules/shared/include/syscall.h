@@ -1,7 +1,6 @@
 #pragma once
 
-#include <common.h>
-#include <bool.h>
+#include <stdlib.h>
 
 extern uint32_t	getPID();
 

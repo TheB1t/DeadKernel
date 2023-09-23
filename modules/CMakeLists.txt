@@ -16,10 +16,13 @@ SET(CMAKE_C_STANDARD 99)
 SET(CMAKE_C_FLAGS_RELEASE "")
 SET(CMAKE_C_FLAGS "-m32 -g3 -fno-pic -fno-pie -nostdlib -nostdinc -fno-builtin -fno-stack-protector")
 
-FILE(GLOB_RECURSE SHARED_SRC_FILES "shared_src/*.c")
-FILE(GLOB_RECURSE SHARED_ASM_FILES "shared_src/*.s")
+FILE(GLOB_RECURSE SRC_FILES "shared/src/*.c")
+FILE(GLOB_RECURSE ASM_FILES "shared/src/*.s")
 
-INCLUDE_DIRECTORIES(shared_include)
+LIST(APPEND SHARED_SRC_FILES ${SRC_FILES})
+LIST(APPEND SHARED_ASM_FILES ${ASM_FILES})
+
+INCLUDE_DIRECTORIES(shared/include)
 
 ADD_SUBDIRECTORY(testModule)
 ADD_SUBDIRECTORY(shell)

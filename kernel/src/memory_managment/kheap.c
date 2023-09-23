@@ -58,7 +58,6 @@ typedef uint32_t size_t;
 extern uint32_t end;
 uint32_t placementAddress = (uint32_t)&end;
 
-extern PageDir_t* kernelDir;
 Heap_t* kernelHeap = 0;
 
 uint32_t _kmalloc(uint32_t size, uint8_t align, uint32_t* phys) {

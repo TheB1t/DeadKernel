@@ -1,5 +1,11 @@
 ENTRY(main)
 SECTIONS {
+	.module_info 0x0 :
+	{
+		*(.module_info)
+		. = ALIGN(4096);
+	}
+
 	.text 0x01000000 :
 	{
 		code = .; _code = .; __code = .;

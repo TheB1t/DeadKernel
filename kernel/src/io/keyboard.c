@@ -114,29 +114,26 @@ uint8_t initKeyboard() {
 
 	registerInterruptHandler(IRQ1, keyboardHandler);
 
-	keyboardSendCmd(KBD_CMD_RESET_NO_SCAN);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(KBD_CMD_SET_LEDS);
+	// if (!keyboardWaitACK(100)) goto _error;
 
-	keyboardSendCmd(KBD_CMD_SET_LEDS);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(0x0);
+	// if (!keyboardWaitACK(100)) goto _error;
 
-	keyboardSendCmd(0x0);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(KBD_CMD_SET_LEDS);
+	// if (!keyboardWaitACK(100)) goto _error;
 
-	keyboardSendCmd(KBD_CMD_SET_LEDS);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(0x2);
+	// if (!keyboardWaitACK(100)) goto _error;
 
-	keyboardSendCmd(0x2);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(KBD_CMD_SET_REPEAT_SPEED);
+	// if (!keyboardWaitACK(100)) goto _error;
 
-	keyboardSendCmd(KBD_CMD_SET_REPEAT_SPEED);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(0x20);
+	// if (!keyboardWaitACK(100)) goto _error;
 
-	keyboardSendCmd(0x20);
-	if (!keyboardWaitACK(100)) goto _error;
-
-	keyboardSendCmd(KBD_CMD_ALLOW_SCAN);
-	if (!keyboardWaitACK(100)) goto _error;
+	// keyboardSendCmd(KBD_CMD_ALLOW_SCAN);
+	// if (!keyboardWaitACK(100)) goto _error;
 
 	return 0;
 _error:

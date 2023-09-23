@@ -2,6 +2,7 @@
 #include <memory_managment/kheap.h>
 #include <utils/stackTrace.h>
 #include <io/serial.h>
+#include <multitasking/task.h>
 
 #define INDEX_FROM_BIT(a)	(a / 32)
 #define OFFSET_FROM_BIT(a)	(a % 32)
@@ -49,10 +50,9 @@ void linkFrame(Page_t* page, uint32_t alignedAddress, uint32_t isKernel, uint32_
 		return;
 
 	if (READ_FRAME(alignedAddress)) {
-		if (page->frame != (alignedAddress / PAGE_SIZE)) {
-			WARN("Try to allocating busy frame!");
-			return;
-		}
+		WARN("Allocating busy frame!");
+		// TODO: Need to rework this part
+		// return;
 	}
 
 	SET_FRAME(alignedAddress);
@@ -165,7 +165,7 @@ void allocKernelSectionByName(uint8_t* secName) {
  *	marks up the memory used by the kernel for its use
  */
 void initPaging() {
-	uint32_t memEndPageMB = 256;
+	uint32_t memEndPageMB = 1024;
 	uint32_t memEndPage = memEndPageMB * 1024 * 1024;
 
 	nframes = ADDR2FRAME(memEndPage);
@@ -273,21 +273,47 @@ void pageFault(CPURegisters_t* regs) {
     asm volatile ("mov %%cr2, %0" : "=r" (faultingAddress));
 
     char* err = "Unknown error";
+	bool resolved = false;
     
-    if (!(regs->err_code & 0x1)) 
+    if (!(regs->err_code & 0x1)) {
     	err = "Page not present";
-    	
-    if (regs->err_code & 0x2)
+
+		PageDir_t* savedDir = NULL;
+
+		if (isTaskingInit()) {
+			if (regs->cr3 == currentTask->pageDir->physicalAddr)
+				if (currentDir != currentTask->pageDir)
+					savedDir = switchPageDir(currentTask->pageDir);
+
+		} else if (regs->cr3 != currentDir->physicalAddr) {
+			savedDir = switchPageDir(currentDir);
+		}
+		
+		if (currentDir == kernelDir) {
+			allocFramesMirrored(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 0);
+		} else {
+			allocFrames(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 1);
+		}
+
+		if (savedDir) {
+			switchPageDir(savedDir);
+		}
+
+		resolved = true;
+		
+	} else if (regs->err_code & 0x2)
     	err = "Page is read-only";
     	
-    if (regs->err_code & 0x4)
+    else if (regs->err_code & 0x4)
     	err = "Processor in user-mode";
     	 
-    if (regs->err_code & 0x8)
+    else if (regs->err_code & 0x8)
     	err = "Overwrite CPU-reserved bits";
 
-	LOG_INFO("Page fault [0x%x] %s (eip 0x%08x)", faultingAddress, err, regs->eip);
-    PANIC("Page fault");	
+	if (!resolved) {
+    	LOG_INFO("Page fault [0x%x] %s (eip 0x%08x) (unresolved)", faultingAddress, err, regs->eip);
+		PANIC("Page fault");	
+	}
 }
 
 /*

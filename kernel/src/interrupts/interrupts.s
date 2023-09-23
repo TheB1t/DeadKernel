@@ -130,6 +130,7 @@ struc CPURegs
 	._val1: resd 1	; SS0
 endstruc
 
+[EXTERN __interruptsDisable]
 [EXTERN MainInterruptHandler]
 ASMInterruptPreHandler:
     sub esp, 40
@@ -158,9 +159,17 @@ ASMInterruptPreHandler:
 	mov fs, ax
 	mov gs, ax
 
+	mov eax, [__interruptsDisable]
+	inc eax
+	mov [__interruptsDisable], eax
+
 	push esp
     call MainInterruptHandler
     add esp, 4
+
+	mov eax, [__interruptsDisable]
+	inc eax
+	mov [__interruptsDisable], eax
 
 	mov ax, [esp + CPURegs._ds]
 	mov ds, ax

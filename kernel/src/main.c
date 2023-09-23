@@ -1,33 +1,13 @@
 #include <multiboot.h>
 #include <utils/common.h>
-#include <io/screen.h>
 #include <interrupts/descriptor_tables.h>
 #include <utils/stackTrace.h>
+#include <modules/modules.h>
 
 #include <fs/elf/elf.h>
 
 extern uint32_t placementAddress;
 extern int32_t kernel_main();
-ELF32Header_t* testModule;
-
-void memPrint(uint8_t* mem, uint32_t size) {
-	#define OUT_W 16
-
-	for (uint32_t i = 0; i < size / OUT_W; i++) {
-		printf("%08X | ", OUT_W * i);
-		for (uint32_t j = 0; j < OUT_W; j++) {
-			printf("%02X ", mem[(OUT_W * i) + j]);
-		}
-		printf("| ");
-		for (uint32_t j = 0; j < OUT_W; j++) {
-			if (mem[(OUT_W * i) + j]  > 31)
-				printf("%.1c", mem[(OUT_W * i) + j]);
-			else
-				printf(".");
-		}
-		printf("\n");
-	}
-}
 
 typedef struct {
 	uint32_t	E			:1;
@@ -60,10 +40,24 @@ int32_t main(multiboot_t* mboot) {
 
 
 	LOG_INFO("[GRUB] Loaded %d modules", mboot->mods_count);
-	multiboot_mods_t* mods = (multiboot_mods_t*)mboot->mods_addr;
+	multiboot_mods_t* modules = (multiboot_mods_t*)mboot->mods_addr;
+	initModules(modules, mboot->mods_count);
+
 	if (mboot->mods_count > 0) {
-		testModule = (ELF32Header_t*)mods[1].mod_start;
-		placementAddress = mods[mboot->mods_count - 1].mod_end;
+		placementAddress = modules[mboot->mods_count - 1].mod_end;
+
+		printf("Loaded modules: ");
+		for (uint32_t i = 0; i < mboot->mods_count; i++) {
+			ELF32Header_t* module = (ELF32Header_t*)modules[i].mod_start;
+			char* module_name = getModuleName(module);
+
+			if (module_name == NULL)
+				continue;
+
+			printf("%s ", module_name);
+		}
+
+		printf("\n");
 	}
 
 	LOG_INFO("[GRUB] Loaded %s table",

@@ -10,8 +10,6 @@ Task_t* currentTask		= 0;
 
 TaskQueue_t mainQueue;
 
-extern PageDir_t* kernelDir;
-extern PageDir_t* currentDir;
 extern void loadEntry();
 
 uint32_t nextPID = 0;
@@ -35,14 +33,14 @@ void initTasking() {
 
 	kernelTask					= allocTask();
 	
-	kernelTask->pageDir			= currentDir;
+	kernelTask->pageDir			= kernelDir;
 	kernelTask->status			= TS_CREATED;
 	kernelTask->time			= 0;
 
 	kernelTask->regs.cs			= GDT_DESC_SEG(GDT_DESC_KERNEL_CODE, PL_RING0);
 	kernelTask->regs.ds			= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	kernelTask->regs.val1		= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
-	kernelTask->regs.cr3		= currentDir->physicalAddr;
+	kernelTask->regs.cr3		= kernelDir->physicalAddr;
 
 	asm volatile("				\
 				  mov %%cs, %0;	\
@@ -142,6 +140,30 @@ void switchTask(CPURegisters_t* regs) {
 	copyContext(regs, &currentTask->regs);
 }
 
+void copyFromUser(void* ptr0, void* userPtr, uint32_t size) {
+	DISABLE_INTERRUPTS();
+
+	PageDir_t* savedDir = switchPageDir(currentTask->pageDir);
+
+	memcpy(ptr0, userPtr, size);
+
+	switchPageDir(savedDir);
+
+	ENABLE_INTERRUPTS();
+}
+
+void copyToUser(void* ptr0, void* userPtr, uint32_t size) {
+	DISABLE_INTERRUPTS();
+
+	PageDir_t* savedDir = switchPageDir(currentTask->pageDir);
+
+	memcpy(userPtr, ptr0, size);
+
+	switchPageDir(savedDir);
+
+	ENABLE_INTERRUPTS();
+}
+
 Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
 	DISABLE_INTERRUPTS();
 
@@ -152,8 +174,7 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
 	newTask->regs.eax		= hdr->entry;
 	newTask->regs.eip		= (uint32_t)loadEntry;
 
-
-	PageDir_t* clonedDir	= cloneDir(currentDir);
+	PageDir_t* clonedDir	= cloneDir(kernelTask->pageDir);
 	
 	newTask->pageDir	= clonedDir;
 	newTask->regs.cr3	= clonedDir->physicalAddr;
@@ -174,7 +195,6 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
 	for (uint32_t i = 0; i < hdr->phnum; i++) {
 		ELF32ProgramHeader_t* ph = ELFProgram(hdr, i);
 		if (ph->type == PT_LOAD) {
-			allocFrames(ph->vaddr, ph->vaddr + ph->memsz, 1, 0, 1);
 			memcpy((uint8_t*)ph->vaddr, ((uint8_t*)hdr) + ph->offset, ph->filesz);
 		}
 	}

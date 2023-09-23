@@ -1,7 +1,6 @@
 #pragma once
 
 #include <utils/common.h>
-#include <utils/bool.h>
 
 typedef struct {
     bool locked;
