@@ -1,6 +1,8 @@
 #pragma once
 
 #include <utils/common.h>
+#include <utils/stackTrace.h>
+#include <memory_managment/heap.h>
 #include <memory_managment/kheap.h>
 #include <memory_managment/paging.h>
 #include <interrupts/descriptor_tables.h>
@@ -33,6 +35,8 @@ typedef struct task {
 	uint32_t		entry;
 	int32_t			exitcode;
 	uint32_t		time;
+	Heap_t*			heap;
+	ELF32Obj_t*		elf_obj;
 	struct task*	next;
 	struct task*	prev;
 } Task_t;
@@ -46,7 +50,7 @@ void		initTasking();
 void		switchTask(CPURegisters_t* regs);
 void		copyFromUser(void* ptr0, void* userPtr, uint32_t size);
 void		copyToUser(void* ptr0, void* userPtr, uint32_t size);
-Task_t*		makeTaskFromELF(ELF32Header_t* hdr);
+Task_t*		makeTaskFromELF(ELF32Obj_t* hdr);
 int32_t		runTask(Task_t* task);
 void		stopTask(Task_t* task);
 void 		destroyTask(Task_t* task);

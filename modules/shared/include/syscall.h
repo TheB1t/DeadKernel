@@ -13,4 +13,7 @@ extern void		screenClear();
 extern bool		keyboardReadReady();
 extern char		keyboardGetChar();
 
+uint32_t        malloc(uint32_t size);
+void            free(void* addr);
+
 extern void yield();

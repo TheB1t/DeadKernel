@@ -1,4 +1,5 @@
 [GLOBAL GDTFlush]
+type GDTFlush function
 GDTFlush:
 	mov eax, [esp + 4]
 	lgdt [eax]
@@ -15,12 +16,14 @@ GDTFlush:
 	ret
 
 [GLOBAL IDTFlush]
+type IDTFlush function
 IDTFlush:
 	mov eax, [esp + 4]
 	lidt [eax]
 	ret
 
 [GLOBAL TSSFlush]
+type TSSFlush function
 TSSFlush:
 	xor eax, eax
 	mov eax, [esp + 4]

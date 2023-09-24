@@ -47,14 +47,19 @@ int32_t main(multiboot_t* mboot) {
 		placementAddress = modules[mboot->mods_count - 1].mod_end;
 
 		printf("Loaded modules: ");
+    	ELF32Obj_t module;
 		for (uint32_t i = 0; i < mboot->mods_count; i++) {
-			ELF32Header_t* module = (ELF32Header_t*)modules[i].mod_start;
-			char* module_name = getModuleName(module);
+			memset(&module, 0, sizeof(ELF32Obj_t));
+
+        	if (!ELFLoad(modules[i].mod_start, &module))
+            	continue;
+
+			char* module_name = getModuleName(&module);
 
 			if (module_name == NULL)
 				continue;
 
-			printf("%s ", module_name);
+			printf("%s (at 0x%08x) ", module_name, module.header);
 		}
 
 		printf("\n");
@@ -67,9 +72,7 @@ int32_t main(multiboot_t* mboot) {
 	
 	//init stacktrace variables
 	if (mboot->flags & MULTIBOOT_FLAG_ELF) {
-		kernelSectionTable = (KernelSectionHeader_t*)mboot->addr;
-		sectionTableSize = mboot->num;
-		sectionStringTableIndex = mboot->shndx;
+		initKernelTable((void*)mboot->addr, mboot->num, mboot->shndx);
 	} else {
 		WARN("Section table can't load! Stacktrace in semi-functional mode");
 	}

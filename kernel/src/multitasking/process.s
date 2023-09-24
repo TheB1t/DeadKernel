@@ -2,6 +2,7 @@
 [EXTERN __disableInterrupts]
 
 [GLOBAL copyPagePhysical]
+type copyPagePhysical function
 copyPagePhysical:
 	push ebx
 	pushf
@@ -34,9 +35,3 @@ copyPagePhysical:
 	popf
 	pop ebx	
 	ret
-
-[GLOBAL loadEntry]
-loadEntry:
-	call eax
-	mov ecx, 0xFE11DEAD
-	jmp $

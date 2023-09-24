@@ -1,42 +1,15 @@
 #include <fs/elf/elf.h>
 
-inline uint8_t ELF32CheckMagic(ELF32Header_t* hdr) {
+inline bool ELF32CheckMagic(ELF32Header_t* hdr) {
 	return (hdr->ident.magic & ELF_MAGIC) == ELF_MAGIC;
 }
 
-inline ELF32SectionHeader_t* ELFSectionHeader(ELF32Header_t *hdr) {
-	return (ELF32SectionHeader_t*)((uint8_t*)hdr + hdr->shoff);
-}
- 
-inline ELF32SectionHeader_t* ELFSection(ELF32Header_t *hdr, uint32_t idx) {
-	return &ELFSectionHeader(hdr)[idx];
-}
+ELF32SectionHeader_t* ELFLookupSectionByName(ELF32Obj_t* hdr, char* name) {
+	for (uint32_t i = 0; i < ELF32_SECTAB_NENTRIES(hdr); i++) {
+		ELF32SectionHeader_t* section = ELF32_ENTRY(ELF32_TABLE(hdr, sec), i);
 
-inline ELF32ProgramHeader_t* ELFProgramHeader(ELF32Header_t *hdr) {
-	return (ELF32ProgramHeader_t*)((uint8_t*)hdr + hdr->phoff);
-}
- 
-inline ELF32ProgramHeader_t* ELFProgram(ELF32Header_t *hdr, uint32_t idx) {
-	return &ELFProgramHeader(hdr)[idx];
-}
-
-uint8_t* ELFStrTable(ELF32Header_t *hdr) {
-	if (hdr->shstrndx == SHN_UNDEF)
-		return NULL;
-	return (uint8_t*)hdr + ELFSection(hdr, hdr->shstrndx)->offset;
-}
- 
-uint8_t* ELFLookupString(ELF32Header_t *hdr, uint32_t offset) {
-	uint8_t* strtab = ELFStrTable(hdr);
-	if (strtab == NULL)
-		return NULL;
-	return (strtab + offset);
-}
-
-ELF32SectionHeader_t* ELFLookupSectionByName(ELF32Header_t *hdr, char* name) {
-	for (uint32_t i = 0; i < hdr->shnum; i++) {
-		ELF32SectionHeader_t* section = ELFSection(hdr, i);
-		if (strcmp(ELFLookupString(hdr, section->name), name))
+		uint8_t* section_name = (uint8_t*)ELF32_TABLE(hdr, hstr) + section->name;
+		if (strcmp(section_name, name))
 			continue;
 
 		return section; 
@@ -45,48 +18,89 @@ ELF32SectionHeader_t* ELFLookupSectionByName(ELF32Header_t *hdr, char* name) {
 	return NULL;
 }
 
-uint8_t* ELFGetSymbolNameByAddress(ELF32Header_t* hdr, uint32_t address) {
-	if (address == 0)
-		return SYMBOL_NOT_FOUND;
-		
-	ELF32SectionHeader_t* strtab_section = ELFLookupSectionByName(hdr, ".strtab");
-	if (strtab_section == NULL)
-		return SYMBOL_NOT_FOUND;
+ELF32SectionHeader_t* ELFLookupSectionByType(ELF32Obj_t* hdr, uint8_t type) {
+	for (uint32_t i = 0; i < ELF32_SECTAB_NENTRIES(hdr); i++) {
+		ELF32SectionHeader_t* section = ELF32_ENTRY(ELF32_TABLE(hdr, sec), i);
 
-	uint8_t* strtab = (uint8_t*)hdr + strtab_section->offset;
-	
-	ELF32SectionHeader_t* symtab_section = ELFLookupSectionByName(hdr, ".symtab");
-	if (symtab_section == NULL)
-		return SYMBOL_NOT_FOUND;
-		
-	uint32_t symtab_num = symtab_section->size / sizeof(ELF32Symbol_t);
-	ELF32Symbol_t* symtab = (ELF32Symbol_t*)((uint8_t*)hdr + symtab_section->offset);
-	
-	for (uint32_t i = 0; i < symtab_num; i++) {
-		ELF32Symbol_t* symbol = &symtab[i];
-		if (symbol->value == address)
-			return strtab + symbol->name;
+		if (section->type != type)
+			continue;
+
+		return section; 
 	}
 	
-	return SYMBOL_NOT_FOUND;
+	return NULL;
 }
 
-uint32_t ELFGetNearestSymbolByAddress(ELF32Header_t* hdr, uint32_t address) {
-	ELF32SectionHeader_t* symtab_section = ELFLookupSectionByName(hdr, ".symtab");
-	if (symtab_section == NULL)
-		return 0;
-		
-	uint32_t symtab_num = symtab_section->size / sizeof(ELF32Symbol_t);
-	ELF32Symbol_t* symtab = (ELF32Symbol_t*)((uint8_t*)hdr + symtab_section->offset);
+ELF32Symbol_t* ELFLookupSymbolByName(ELF32Obj_t* hdr, uint8_t type, char* name) {
+	if (ELF32_SECTAB_NENTRIES(hdr) == 0) goto _error;
+	if (ELF32_SYMTAB_NENTRIES(hdr) == 0) goto _error;
+	if (ELF32_STRTAB_SIZE(hdr) == 0) goto _error;
 
-	uint32_t nearest = 0;
+	for (uint32_t i = 0; i < ELF32_SYMTAB_NENTRIES(hdr); i++) {
+		ELF32Symbol_t* symbol = ELF32_ENTRY(ELF32_TABLE(hdr, sym), i);
+
+		if (!STT_CHECKTYPE(symbol, type))
+			continue;
+
+		uint8_t* symbol_name = (uint8_t*)ELF32_TABLE(hdr, str) + symbol->name;
+		if (strcmp(symbol_name, name) == 0)
+			return symbol;
+	}
 	
-	for (uint32_t i = 0; i < symtab_num; i++) {
-		ELF32Symbol_t* symbol = &symtab[i];
-		if ((address - symbol->value) < (address - nearest))
-			nearest = symbol->value;
+_error:
+	return NULL;
+}
+
+ELF32Symbol_t* ELFGetNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint32_t address) {
+	if (ELF32_SECTAB_NENTRIES(hdr) == 0) goto _error;
+	if (ELF32_SYMTAB_NENTRIES(hdr) == 0) goto _error;
+	if (address < hdr->start || address > hdr->end) goto _error;
+
+	ELF32Symbol_t* nearest = NULL;
+	
+	for (uint32_t i = 0; i < ELF32_SYMTAB_NENTRIES(hdr); i++) {
+		ELF32Symbol_t* symbol = ELF32_ENTRY(ELF32_TABLE(hdr, sym), i);
+
+		if (!STT_CHECKTYPE(symbol, type))
+			continue;
+
+		if ((address - symbol->value) < (address - nearest->value))
+			nearest = symbol;
 	}
 	
 	return nearest;
+_error:
+	return NULL;
 }
 
+bool ELFLoad(uint32_t address, ELF32Obj_t* out) {
+	ELF32Header_t* header = (ELF32Header_t*)address;
+	if (!ELF32CheckMagic(header))
+		return false;
+
+	out->header = header;
+
+	ELF32_TABLE(out, sec)			= ELF32_SECTAB(out);
+	ELF32_TABLE_SIZE(out, sec)		= ELF32_HEADER(out)->shnum;
+
+	ELF32_TABLE(out, prog)			= ELF32_PROGTAB(out);
+	ELF32_TABLE_SIZE(out, prog)		= ELF32_HEADER(out)->phnum;
+
+	ELF32_TABLE(out, hstr)			= ELF32_HSTRTAB(out);
+
+	ELF32SectionHeader_t* symtab	= ELFLookupSectionByType(out, ESHT_SYMTAB);
+	ELF32_TABLE(out, sym)			= symtab ? (ELF32Symbol_t*)((uint8_t*)out->header + symtab->offset) : NULL;
+	ELF32_TABLE_SIZE(out, sym)		= symtab->size / sizeof(ELF32Symbol_t);
+
+	ELF32SectionHeader_t* strtab	= ELFLookupSectionByType(out, ESHT_STRTAB);
+	ELF32_TABLE(out, str)			= strtab ? (uint8_t*)out->header + strtab->offset : NULL;
+	ELF32_TABLE_SIZE(out, str)		= strtab ? strtab->size : 0;
+
+	ELF32Symbol_t* startsym			= ELFLookupSymbolByName(out, STT_NOTYPE, "__code");
+	out->start						= startsym ? startsym->value : 0;
+
+	ELF32Symbol_t* endsym			= ELFLookupSymbolByName(out, STT_NOTYPE, "__end");
+	out->end						= endsym ? endsym->value : 0;
+
+	return true;
+}

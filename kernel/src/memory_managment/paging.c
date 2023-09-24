@@ -22,9 +22,9 @@ uint32_t nframes;
 
 extern uint32_t start;
 extern uint32_t end;
-//extern void copyPagePhysical(uint32_t, uint32_t);
+
 extern uint32_t placementAddress;
-extern Heap_t* kernelHeap;
+
 
 extern void copyPagePhysical(uint32_t, uint32_t);
 
@@ -148,7 +148,7 @@ void freeFrames(uint32_t start, uint32_t end) {
 /*
  *	Allocates memory for the kernel section
  */
-void allocKernelSection(KernelSectionHeader_t* sec) {
+void allocKernelSection(ELF32SectionHeader_t* sec) {
 	if (sec != NULL)
 		allocFramesMirrored(sec->addr, sec->addr + sec->size, 1, 0, 0);
 }
@@ -157,7 +157,7 @@ void allocKernelSection(KernelSectionHeader_t* sec) {
  *	Allocates memory for the kernel section by name
  */
 void allocKernelSectionByName(uint8_t* secName) {
-	allocKernelSection(kernelLookupSectionByName(secName));
+	allocKernelSection(ELFLookupSectionByName(KERNEL_TABLE_OBJ, secName));
 }
 
 /*
@@ -183,7 +183,7 @@ void initPaging() {
 	kernelDir->physicalAddr = (uint32_t)kernelDir->tablesPhysical;
 
 	
-	for (uint32_t i = KHEAP_START; i < KHEAP_START + KHEAP_MIN_SIZE; i += PAGE_SIZE) 
+	for (uint32_t i = KHEAP_START; i < KHEAP_START + HEAP_MIN_SIZE; i += PAGE_SIZE) 
 		getPage(i, 1, kernelDir);
 
 	uint32_t kheap_addr = kmalloc(sizeof(Heap_t));
@@ -208,13 +208,13 @@ void initPaging() {
 	allocFramesMirrored((uint32_t)&end, placementAddress + PAGE_SIZE, 1, 0, 0);
 
 	//Allocating kernel heap
-	allocFrames(KHEAP_START, KHEAP_START + KHEAP_MIN_SIZE, 1, 0, 0);
+	allocFrames(KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 1, 0, 0);
 
 	registerInterruptHandler(14, pageFault);
 
 	switchPageDir(kernelDir);
 	
-	kernelHeap = createHeap(kheap_addr, KHEAP_START, KHEAP_START + KHEAP_MIN_SIZE, 0xCFFFF000, 0, 0);
+	kernelHeap = createHeap(kheap_addr, kernelDir, KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 0xCFFFF000, 0, 0);
 }
 
 /*

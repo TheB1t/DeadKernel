@@ -8,21 +8,24 @@ void initModules(multiboot_mods_t* modules, uint32_t count) {
     __modules_count = count;
 }
 
-char* getModuleName(ELF32Header_t* module) {
+char* getModuleName(ELF32Obj_t* module) {
     ELF32SectionHeader_t* module_info_section = ELFLookupSectionByName(module, ".module_info");
     if (module_info_section == NULL)
         return NULL;
 
-	ModuleInfo_t* module_info = (ModuleInfo_t*)((uint8_t*)module + module_info_section->offset);
-    // memPrint(module_info, sizeof(ModuleInfo_t));
+	ModuleInfo_t* module_info = (ModuleInfo_t*)((uint8_t*)module->header + module_info_section->offset);
 
     return (char*)&module_info->moduleName;
 }
 
-ELF32Header_t* getModuleByName(char* name) {
+bool getModuleByName(char* name, ELF32Obj_t* module) {
     for (uint32_t i = 0; i < __modules_count; i++) {
-        ELF32Header_t* module = (ELF32Header_t*)__modules[i].mod_start;
-        char* module_name = getModuleName((void*)module);
+        memset(module, 0, sizeof(ELF32Obj_t));
+
+        if (!ELFLoad(__modules[i].mod_start, module))
+            continue;
+
+        char* module_name = getModuleName(module);
 
         if (module_name == NULL)
             continue;
@@ -30,8 +33,8 @@ ELF32Header_t* getModuleByName(char* name) {
         if (strcmp(name, module_name))
             continue;
 
-        return module;
+        return true;
     }
 
-    return NULL;
+    return false;
 }

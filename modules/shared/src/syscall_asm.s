@@ -1,5 +1,6 @@
 %macro SYSTEMCALL 2
   [GLOBAL %2]
+  type %2 function
   %2:
 
   	mov eax, %1
@@ -22,6 +23,9 @@ SYSTEMCALL 5, screenClear
 
 SYSTEMCALL 6, keyboardReadReady
 SYSTEMCALL 7, keyboardGetChar
+
+SYSTEMCALL 8, malloc
+SYSTEMCALL 9, free
 
 [GLOBAL yield]
 yield:

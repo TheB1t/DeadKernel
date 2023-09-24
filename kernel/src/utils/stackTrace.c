@@ -1,79 +1,32 @@
 #include <utils/stackTrace.h>
 
-KernelSectionHeader_t* kernelSectionTable = 0;
-uint32_t sectionStringTableIndex = 0;
-uint32_t sectionTableSize = 0;
+ELF32Obj_t	kernelTableObj = { 0 };
+
+void initKernelTable(void* sybtabPtr, uint32_t size, uint32_t shindex) {
+	KERNEL_TABLE_OBJ->header = NULL;
+
+	KERNEL_TABLE_OBJ->sections.sectab_head			= (ELF32SectionHeader_t*)sybtabPtr;
+	KERNEL_TABLE_OBJ->sections.sectab_size			= size;
+
+	KERNEL_TABLE_OBJ->sections.hstrtab_head			= (uint8_t*)ELF32_SECTION(KERNEL_TABLE_OBJ, shindex)->addr;
+
+	ELF32SectionHeader_t* symtab					= ELFLookupSectionByType(KERNEL_TABLE_OBJ, ESHT_SYMTAB);
+	KERNEL_TABLE_OBJ->sections.symtab_head			= symtab ? (ELF32Symbol_t*)symtab->addr : NULL;
+	KERNEL_TABLE_OBJ->sections.symtab_size 			= symtab ? symtab->size / sizeof(ELF32Symbol_t) : 0;
+
+	ELF32SectionHeader_t* strtab					= ELFLookupSectionByType(KERNEL_TABLE_OBJ, ESHT_STRTAB);
+	KERNEL_TABLE_OBJ->sections.strtab_head			= strtab ? (uint8_t*)strtab->addr : NULL;
+	KERNEL_TABLE_OBJ->sections.strtab_size			= strtab ? strtab->size : 0;
+
+	ELF32Symbol_t* startsym							= ELFLookupSymbolByName(KERNEL_TABLE_OBJ, STT_NOTYPE, "__code");
+	KERNEL_TABLE_OBJ->start							= startsym ? startsym->value : 0;
+
+	ELF32Symbol_t* endsym							= ELFLookupSymbolByName(KERNEL_TABLE_OBJ, STT_NOTYPE, "__end");
+	KERNEL_TABLE_OBJ->end							= endsym ? endsym->value : 0;
+}
 
 uint8_t isKernelSectionTableLoaded() {
-	return kernelSectionTable != NULL;
-}
-
-KernelSectionHeader_t* kernelSection(uint32_t idx) {
-	return &kernelSectionTable[idx];
-}
-
-uint8_t* kernelLookupString(uint32_t offset) {
-	return (uint8_t*)kernelSection(sectionStringTableIndex)->addr + offset;
-}
-
-KernelSectionHeader_t* kernelLookupSectionByName(char* name) {
-	if (!isKernelSectionTableLoaded())
-		return NULL;
-		
-	for (uint32_t i = 0; i < sectionTableSize; i++) {
-		KernelSectionHeader_t* section = kernelSection(i);
-		if (strcmp(kernelLookupString(section->name), name))
-			continue;
-
-		return section; 
-	}
-	
-	return NULL;
-}
-
-uint8_t* kernelGetSymbolNameByAddress(int32_t address) {
-	if (address == 0)
-		return SYMBOL_NOT_FOUND;
-		
-	KernelSectionHeader_t* strtab_section = kernelLookupSectionByName(".strtab");
-	if (strtab_section == NULL)
-		return SYMBOL_NOT_FOUND;
-
-	uint8_t* strtab = (uint8_t*)strtab_section->addr;
-	
-	KernelSectionHeader_t* symtab_section = kernelLookupSectionByName(".symtab");
-	if (symtab_section == NULL)
-		return SYMBOL_NOT_FOUND;
-		
-	uint32_t symtab_num = symtab_section->size / sizeof(KernelSymbol_t);
-	KernelSymbol_t* symtab = (KernelSymbol_t*)symtab_section->addr;
-
-	for (uint32_t i = 0; i < symtab_num; i++) {
-		KernelSymbol_t* symbol = &symtab[i];
-		if (symbol->value == address && (ST_CHECKTYPE(symbol, STT_NOTYPE) || ST_CHECKTYPE(symbol, STT_OBJECT) || ST_CHECKTYPE(symbol, STT_FUNC)))
-			return strtab + symbol->name;
-	}
-	
-	return SYMBOL_NOT_FOUND;
-}
-
-uint32_t kernelGetNearestSymbolByAddress(uint32_t address) {
-	KernelSectionHeader_t* symtab_section = kernelLookupSectionByName(".symtab");
-	if (symtab_section == NULL)
-		return 0;
-
-	uint32_t symtab_num = symtab_section->size / sizeof(KernelSymbol_t);
-	KernelSymbol_t* symtab = (KernelSymbol_t*)symtab_section->addr;
-
-	uint32_t nearest = 0;
-	
-	for (uint32_t i = 0; i < symtab_num; i++) {
-		KernelSymbol_t* symbol = &symtab[i];
-		if ((address - symbol->value) < (address - nearest))
-			nearest = symbol->value;
-	}
-	
-	return nearest;
+	return ELF32_TABLE(KERNEL_TABLE_OBJ, sec) != NULL && ELF32_TABLE(KERNEL_TABLE_OBJ, hstr) != NULL;
 }
 
 typedef struct stackFrame {
@@ -81,38 +34,71 @@ typedef struct stackFrame {
 	uint32_t eip;
 } stackFrame_t;
 
-void printStackFrame(uint32_t address) {
+void printStackFrame(uint32_t address, bool ifFaulting) {
 	if (!address)
 		return;
 
-    uint32_t nearestAddress = kernelGetNearestSymbolByAddress(address);
-	
-    if (nearestAddress) {
-		uint8_t* name = kernelGetSymbolNameByAddress(nearestAddress);
+	CPURegisters_t* context = getInterruptedContext();
+	ELF32Obj_t* hdr = KERNEL_TABLE_OBJ;
+	ELF32Symbol_t* symbol = NULL;
 
-		printf("	0x%08x -> %-25s at address 0x%08x\n", address, name, nearestAddress);
-	} else {
-		printf("	0x%08x\n", address);
+	while (true) {
+		symbol = ELFGetNearestSymbolByAddress(hdr, STT_FUNC, address);
+
+		if (!symbol && isTaskingInit() && hdr != currentTask->elf_obj) {
+			hdr = currentTask->elf_obj;
+			continue;
+		}
+
+		break;
 	}
+
+	if (context) {
+		static bool printed = true;
+		if (context->eip > hdr->start && context->eip < hdr->end && address > hdr->start && address < hdr->end && !ifFaulting) {
+			if (!printed) {
+				printStackFrame(context->eip, true);
+				printed = true;
+			}
+		} else {
+			printed = false;
+		}
+	}
+
+
+	printf("%-3s ", ifFaulting ? "-->" : "");
+
+    if (symbol) {
+		uint8_t* name = hdr->sections.strtab_head + symbol->name;
+		
+		printf("0x%08x -> %-25s at address 0x%08x ", address, name, symbol->value);
+	} else {
+		printf("0x%08x -> %-25s at address 0x%08x ", address, "UNKNOWN", address);
+	}
+
+	if (isTaskingInit()) {
+		if (symbol && hdr == currentTask->elf_obj) {
+			char* name = getModuleName(currentTask->elf_obj);
+			printf("in %s ", name);
+		} else {
+			printf("in kernel ");
+		}
+	}
+
+	printf("\n");
 }
 
 void stackTrace(uint32_t maxFrames) {
-    printf("--[[					Stack trace begin					]]--\n");
+    printf("--[[						Stack trace begin						]]--\n");
 
 	stackFrame_t* stk;
 	__asm__ volatile("movl %%ebp, %0" : "=r"(stk));
-	CPURegisters_t* interruptContext = getInterruptedContext();
-	if (interruptContext) {
-		printStackFrame(interruptContext->eip);
-		stk = (stackFrame_t*)interruptContext->ebp;
-		maxFrames--;
-	}
     
-    for(uint32_t frame = 0; frame < maxFrames; ++frame) {
+    for(; maxFrames > 0; maxFrames--) {
 		if (!stk) break;
-		printStackFrame(stk->eip);
+		printStackFrame(stk->eip, false);
         stk = stk->ebp;
     }
 
-    printf("--[[					Stack trace end		 				]]--\n");
+    printf("--[[						Stack trace end			 				]]--\n");
 }

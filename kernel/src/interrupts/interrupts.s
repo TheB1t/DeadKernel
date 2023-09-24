@@ -1,5 +1,6 @@
 %macro ISR_NOERRCODE 1
 	[GLOBAL isr%1]
+	type isr%1 function
 	isr%1:
 		cli
 		push dword 0
@@ -9,6 +10,7 @@
 
 %macro ISR_ERRCODE 1
 	[GLOBAL isr%1]
+	type isr%1 function
 	isr%1:
 		cli
 		push dword %1
@@ -17,6 +19,7 @@
 
 %macro IRQ 2
 	[GLOBAL irq%1]
+	type irq%1 function
 	irq%1:
 		cli
 		push dword 0
@@ -132,6 +135,7 @@ endstruc
 
 [EXTERN __interruptsDisable]
 [EXTERN MainInterruptHandler]
+type ASMInterruptPreHandler function
 ASMInterruptPreHandler:
     sub esp, 40
 	
@@ -164,7 +168,7 @@ ASMInterruptPreHandler:
 	mov [__interruptsDisable], eax
 
 	push esp
-    call MainInterruptHandler
+	call MainInterruptHandler
     add esp, 4
 
 	mov eax, [__interruptsDisable]

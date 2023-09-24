@@ -8,6 +8,11 @@ DeadKernel will be a fully modular kernel in the future, almost every part of it
 
 ### What tools i using for development
 
+Compilers and languages:
+- `GCC` as `C` code compiler
+- `YASM` as `NASM` code compiler
+- `LD` as linker
+
 For writing code:
 - Visual Studio Code
 - [micro](https://github.com/zyedidia/micro?ysclid=l9jqlbouhf912724444)
@@ -19,6 +24,7 @@ For debugging kernel:
 - real hardware
 
 For building:
+- make
 - cmake
 
 #### Hardware list
@@ -71,12 +77,15 @@ For building:
 - [ ] VESA driver
 - [ ] Ethernet driver
 - [ ] Network stack
+- [ ] Create cross-compiler
+- [ ] Port C library ([mlibc](https://github.com/managarm/mlibc/tree/master)?)
+- [ ] Port GCC
 
 ### Requirements for build and run
 
 1. Install this packages (if you using debian-based system):
 ```bash
-sudo apt -y install qemu qemu-system nasm gcc binutils make cmake grub-pc
+sudo apt -y install qemu qemu-system nasm yasm gcc binutils make cmake grub-pc
 ```
 
 ### How to build/pack/run it

@@ -3,6 +3,7 @@
 #include <io/screen.h>
 #include <multitasking/task.h>
 #include <io/keyboard.h>
+#include <memory_managment/user_heap.h>
 
 extern uint32_t callSysCall(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, void*);
 static void SysCallHandler();
@@ -30,6 +31,9 @@ void initSysCalls() {
 
     addSysCall(&keyboardReadReady);
     addSysCall(&keyboardGetChar);
+
+    addSysCall(&user_malloc);
+    addSysCall(&user_free);
 
 	registerInterruptHandler(128, &SysCallHandler);
 }

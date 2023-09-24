@@ -57,11 +57,11 @@ int32_t kernel_main() {
 			HPET_t* hpet = findInSDT(HPET_SIGNATURE, (SDTHeader_t*)rsdt);
 			LOG_INFO("HPET %s", hpet ? "Found" : "Not found");
 			if (fadt) {
-				LOG_INFO("HPET Info:");
-				printf("Hardware rev: %d\n", hpet->hardware_rev_id);
-				printf("Comparators: %d\n", hpet->comparator_count);
-				printf("Counter size: %d\n", hpet->counter_size);
-				printf("PCI vendor: %s (0x%04x)\n", PCIGetVendorName(hpet->pci_vendor_id), hpet->pci_vendor_id);
+				// LOG_INFO("HPET Info:");
+				// printf("Hardware rev: %d\n", hpet->hardware_rev_id);
+				// printf("Comparators: %d\n", hpet->comparator_count);
+				// printf("Counter size: %d\n", hpet->counter_size);
+				// printf("PCI vendor: %s (0x%04x)\n", PCIGetVendorName(hpet->pci_vendor_id), hpet->pci_vendor_id);
 			}
 		}
 	}
@@ -72,9 +72,10 @@ int32_t kernel_main() {
     
     LOG_INFO("Keyboard: %s", initKeyboard() == 0 ? "initialized" : "initialization failed");
 
-	ELF32Header_t* shell_module = getModuleByName("shell");
-	if (shell_module) {
-		Task_t* shell_task = makeTaskFromELF(shell_module);
+	ELF32Obj_t shell_module = { 0 };
+
+	if (getModuleByName("shell", &shell_module)) {
+		Task_t* shell_task = makeTaskFromELF(&shell_module);
 		runTask(shell_task);
 	}
 

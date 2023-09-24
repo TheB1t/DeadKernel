@@ -9,8 +9,6 @@ typedef		uint32_t	ELF32_Word_t;
 
 #define ELF_MAGIC	(uint32_t)0x464C457F //0x7F + "ELF"
 
-#define SYMBOL_NOT_FOUND ((uint8_t*)"UNKNOWN")
-
 #define SHN_UNDEF	0
 
 #define	ET_NONE		0		//No file type
@@ -113,6 +111,51 @@ typedef struct {
 	ELF32_Half_t	shndx;
 } ELF32Symbol_t;
 
+typedef struct {
+	ELF32SectionHeader_t*	sectab_head;
+	uint32_t				sectab_size;
+
+	ELF32ProgramHeader_t*	progtab_head;
+ 	uint32_t				progtab_size;
+
+	ELF32Symbol_t*			symtab_head;
+	uint32_t				symtab_size;
+
+	uint8_t*				strtab_head;
+	uint32_t				strtab_size;
+
+	uint8_t*				hstrtab_head;
+} ELF32SectionObj_t;
+
+typedef struct {
+	ELF32Header_t*			header;
+	ELF32SectionObj_t		sections;
+	uint32_t				start;
+	uint32_t				end;
+} ELF32Obj_t;
+
+#define ELF32_HEADER(h)				((h)->header)
+#define ELF32_OFFSET(p, off)		((uint8_t*)(p) + (off))
+#define ELF32_ENTRY(h, idx)			(&(h)[idx])
+#define ELF32_TABLE(h, tbl)			((h)->sections.tbl##tab_head)
+#define ELF32_TABLE_SIZE(h, tbl)	((h)->sections.tbl##tab_size)				
+
+#define ELF32_PROGTAB(h)			((ELF32ProgramHeader_t*)ELF32_OFFSET(ELF32_HEADER(h), ELF32_HEADER(h)->phoff));
+#define ELF32_PROGTAB_NENTRIES(h)	(ELF32_TABLE_SIZE(h, prog))
+
+#define ELF32_SECTAB(h)				((ELF32SectionHeader_t*)ELF32_OFFSET(ELF32_HEADER(h), ELF32_HEADER(h)->shoff));
+#define ELF32_SECTAB_NENTRIES(h)	(ELF32_TABLE_SIZE(h, sec))
+
+#define ELF32_STRTAB_SIZE(h)		(ELF32_TABLE_SIZE(h, str))
+
+#define ELF32_SECTION(h, n)			((ELF32SectionHeader_t*)ELF32_ENTRY(ELF32_TABLE(h, sec), n))
+#define ELF32_PROGRAM(h, n)			((ELF32ProgramHeader_t*)ELF32_ENTRY(ELF32_TABLE(h, prog), n))
+
+#define ELF32_HSTRTAB(h)			((uint8_t*)ELF32_OFFSET(ELF32_HEADER(h), ELF32_SECTION(h, (ELF32_HEADER(h)->shstrndx))->offset))
+#define ELF32_SYMTAB_NENTRIES(h)	(ELF32_TABLE_SIZE(h, sym))
+
+#define ELF32_LOOKUP_SECTION_BY_NAME(h, n) (ELF32SectionHeader_t*)ELF32_OFFSET(ELF32_TABLE(h, sec), ELFLookupSectionByName(h, n)->offset);
+
 #define ELF32_ST_BIND(i)	((i) >> 4)
 #define ELF32_ST_TYPE(i)	((i) & 0xf)
 #define ELF32_ST_INFO(b,t)	(((b) << 4) + ((t) & 0xf))
@@ -124,6 +167,11 @@ typedef struct {
 #define STB_HIOS 	12
 #define STB_LOPROC 	13
 #define STB_HIPROC 	15
+
+#define STT_TYPE(i)		((i) & 0xF)
+#define STT_BIND(i)		((i) >> 4)
+#define STT_INFO(b, t)	(((b) << 4) + ((t) & 0xF))	
+#define STT_CHECKTYPE(d, t)	(STT_TYPE(((ELF32Symbol_t*)d)->info) == (t))
 
 #define STT_NOTYPE 	0
 #define STT_OBJECT 	1
@@ -137,13 +185,9 @@ typedef struct {
 #define STT_LOPROC 	13
 #define STT_HIPROC 	15
    
-uint8_t					ELF32CheckMagic(ELF32Header_t* hdr);
-ELF32SectionHeader_t*	ELFSectionHeader(ELF32Header_t *hdr);
-ELF32SectionHeader_t*	ELFSection(ELF32Header_t *hdr, uint32_t idx);
-ELF32ProgramHeader_t*	ELFProgramHeader(ELF32Header_t *hdr);
-ELF32ProgramHeader_t*	ELFProgram(ELF32Header_t *hdr, uint32_t idx);
-uint8_t*				ELFStrTable(ELF32Header_t *hdr);
-uint8_t*				ELFLookupString(ELF32Header_t *hdr, uint32_t offset);
-ELF32SectionHeader_t*	ELFLookupSectionByName(ELF32Header_t *hdr, char* name);
-uint8_t*				ELFGetSymbolNameByAddress(ELF32Header_t* hdr, uint32_t address);
-uint32_t				ELFGetNearestSymbolByAddress(ELF32Header_t* hdr, uint32_t address);
+bool					ELF32CheckMagic(ELF32Header_t* hdr);
+ELF32SectionHeader_t* 	ELFLookupSectionByType(ELF32Obj_t* hdr, uint8_t type);
+ELF32SectionHeader_t* 	ELFLookupSectionByName(ELF32Obj_t* hdr, char* name);
+ELF32Symbol_t* 			ELFLookupSymbolByName(ELF32Obj_t* hdr, uint8_t type, char* name);
+ELF32Symbol_t* 			ELFGetNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint32_t address);
+bool 					ELFLoad(uint32_t address, ELF32Obj_t* out);

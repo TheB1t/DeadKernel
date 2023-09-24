@@ -2,6 +2,7 @@
 
 #include <types.h>
 #include <bool.h>
+#include <math.h>
 
 #define BREAKPOINT {					\
 	asm volatile("xchgw %bx, %bx;");	\
@@ -17,3 +18,4 @@ int			strncmp(const char *str1, const char *str2, uint32_t n);
 char*		strcpy(char* dest, const char* src);
 char*		strcat(char* dest, const char* src);
 void		itoa(char* result, uint32_t base, int32_t value);
+char* 		strtok(char* srcString, char* delim);

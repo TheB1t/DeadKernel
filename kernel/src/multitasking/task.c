@@ -33,6 +33,7 @@ void initTasking() {
 
 	kernelTask					= allocTask();
 	
+	kernelTask->elf_obj			= KERNEL_TABLE_OBJ;
 	kernelTask->pageDir			= kernelDir;
 	kernelTask->status			= TS_CREATED;
 	kernelTask->time			= 0;
@@ -41,6 +42,7 @@ void initTasking() {
 	kernelTask->regs.ds			= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	kernelTask->regs.val1		= GDT_DESC_SEG(GDT_DESC_KERNEL_DATA, PL_RING0);
 	kernelTask->regs.cr3		= kernelDir->physicalAddr;
+	kernelTask->heap			= kernelHeap;
 
 	asm volatile("				\
 				  mov %%cs, %0;	\
@@ -164,15 +166,15 @@ void copyToUser(void* ptr0, void* userPtr, uint32_t size) {
 	ENABLE_INTERRUPTS();
 }
 
-Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
+Task_t* makeTaskFromELF(ELF32Obj_t* hdr) {
 	DISABLE_INTERRUPTS();
 
 	Task_t* newTask			= allocTask();
 
+	newTask->elf_obj		= hdr;
 	newTask->status			= TS_CREATED;
 	newTask->time			= 0;
-	newTask->regs.eax		= hdr->entry;
-	newTask->regs.eip		= (uint32_t)loadEntry;
+	newTask->regs.eip		= hdr->header->entry;
 
 	PageDir_t* clonedDir	= cloneDir(kernelTask->pageDir);
 	
@@ -188,14 +190,18 @@ Task_t* makeTaskFromELF(ELF32Header_t* hdr) {
 	newTask->regs.eflags.r2 = 0;
 	newTask->regs.eflags.IF = 1;
 
+	uint32_t heap_addr = kmalloc(sizeof(Heap_t));
+
 	PageDir_t* savedDir = switchPageDir(clonedDir);
 
 	createStack(BASE_PROCESS_ESP, PROCESS_STACK_SIZE);
 		
-	for (uint32_t i = 0; i < hdr->phnum; i++) {
-		ELF32ProgramHeader_t* ph = ELFProgram(hdr, i);
+	for (uint32_t i = 0; i < ELF32_PROGTAB_NENTRIES(hdr); i++) {
+		newTask->heap = createHeap(heap_addr, clonedDir, HEAP_START, HEAP_START + HEAP_MIN_SIZE, 0xCFFFF000, 0, 0);
+
+		ELF32ProgramHeader_t* ph = ELF32_PROGRAM(hdr, i);
 		if (ph->type == PT_LOAD) {
-			memcpy((uint8_t*)ph->vaddr, ((uint8_t*)hdr) + ph->offset, ph->filesz);
+			memcpy((uint8_t*)ph->vaddr, ((uint8_t*)hdr->header) + ph->offset, ph->filesz);
 		}
 	}
 

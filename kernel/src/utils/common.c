@@ -77,7 +77,7 @@ void kernel_panic(const char* message) {
 	panicCounter++;
 	DISABLE_INTERRUPTS();
 	printf("[Kernel Panic] %s at address 0x%08x\n", message, getInterruptedContext()->eip);
-	stackTrace(8);
+	stackTrace(20);
 	for(;;);
 }
 

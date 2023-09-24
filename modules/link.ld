@@ -1,4 +1,4 @@
-ENTRY(main)
+ENTRY(start)
 SECTIONS {
 	.module_info 0x0 :
 	{

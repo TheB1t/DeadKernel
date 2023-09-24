@@ -25,6 +25,7 @@ mboot:
 [GLOBAL start]
 [GLOBAL kernelHaltedLabel]
 [EXTERN main]
+type start function
 start:
   push    ebx
   ; Execute the kernel:
