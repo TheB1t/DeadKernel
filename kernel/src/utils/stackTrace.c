@@ -26,7 +26,7 @@ void initKernelTable(void* sybtabPtr, uint32_t size, uint32_t shindex) {
 }
 
 uint8_t isKernelSectionTableLoaded() {
-	return ELF32_TABLE(KERNEL_TABLE_OBJ, sec) != NULL && ELF32_TABLE(KERNEL_TABLE_OBJ, hstr) != NULL;
+	return ELF32_TABLE_SIZE(KERNEL_TABLE_OBJ, sec) > 0 && ELF32_TABLE(KERNEL_TABLE_OBJ, hstr) != NULL;
 }
 
 typedef struct stackFrame {

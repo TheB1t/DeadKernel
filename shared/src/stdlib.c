@@ -91,6 +91,99 @@ void itoa(char* result, uint32_t base, int32_t value) {
     }
 }
 
+int32_t atoi(char* str) {
+    int sign = 1, base = 0, i = 0;
+ 
+    while (str[i] == ' ')
+        i++;
+
+    if (str[i] == '-' || str[i] == '+')
+        sign = 1 - 2 * (str[i++] == '-');
+ 
+    while (str[i] >= '0' && str[i] <= '9') {
+        if (base > INT_MAX / 10 || (base == INT_MAX / 10 && str[i] - '0' > 7)) {
+            if (sign == 1)
+                return INT_MAX;
+            else
+                return INT_MIN;
+        }
+        base = 10 * base + (str[i++] - '0');
+    }
+    return base * sign;
+}
+
+int isspace(int ch) {
+    return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f');
+}
+
+int isdigit(int ch) {
+    return (ch >= '0' && ch <= '9');
+}
+
+int tolower(int ch) {
+    if (ch >= 'A' && ch <= 'Z')
+        return ch + ('a' - 'A');
+
+    return ch;
+}
+
+int32_t strtoi(const char* str, char** endptr, int base) {
+    if (str == NULL) {
+        if (endptr != NULL)
+            *endptr = NULL;
+
+        return 0;
+    }
+
+    while (isspace(*str))
+        str++;
+
+    int sign = 1;
+    if (*str == '+' || *str == '-') {
+        if (*str == '-') {
+            sign = -1;
+        }
+        str++;
+    }
+
+    if (base == 0) {
+        if (*str == '0') {
+            if (str[1] == 'x' || str[1] == 'X') {
+                base = 16;
+                str += 2;
+            } else {
+                base = 8;
+                str++;
+            }
+        } else
+            base = 10;
+    } else if (base == 16) {
+        if (*str == '0' && (str[1] == 'x' || str[1] == 'X'))
+            str += 2;
+    }
+
+    int32_t result = 0;
+    while (isdigit(*str) || (*str >= 'a' && *str <= 'f') || (*str >= 'A' && *str <= 'F')) {
+        int digit;
+
+        if (isdigit(*str))
+            digit = *str - '0';
+        else
+            digit = tolower(*str) - 'a' + 10;
+
+        if (digit >= base)
+            break;
+
+        result = result * base + digit;
+        str++;
+    }
+
+    if (endptr != NULL)
+        *endptr = (char *)str;
+
+    return result * sign;
+}
+
 unsigned int is_delim(char c, char* delim) {
     while (*delim != '\0') {
         if (c == *delim)

@@ -18,8 +18,8 @@ void		insertTask(TaskQueue_t* queue, Task_t* task);
 void		cutTask(Task_t* task);
 void		initQueue(TaskQueue_t* queue);
 uint32_t	getStackBegin();
-void		createStack(uint32_t newStart, uint32_t size);
-void		cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, uint32_t* ESP, uint32_t* EBP);
+void		createStack(uint32_t newStart, uint32_t size, bool isKernel);
+void		cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, bool isKernel, uint32_t* ESP, uint32_t* EBP);
 void		moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size);
 void		yieldInterrupt(CPURegisters_t* regs);
 
@@ -194,15 +194,35 @@ Task_t* makeTaskFromELF(ELF32Obj_t* hdr) {
 
 	PageDir_t* savedDir = switchPageDir(clonedDir);
 
-	createStack(BASE_PROCESS_ESP, PROCESS_STACK_SIZE);
-		
+	createStack(BASE_PROCESS_ESP, PROCESS_STACK_SIZE, false);
+	
+	allocFrames(HEAP_START, HEAP_START + HEAP_MIN_SIZE, 1, 0, 1);
+	newTask->heap = createHeap(heap_addr, clonedDir, HEAP_START, HEAP_START + HEAP_MIN_SIZE, 0xA0000000, 0, 0);
+
+	for (uint32_t i = 0; i < ELF32_SECTAB_NENTRIES(hdr); i++) {
+		ELF32SectionHeader_t* section = ELF32_ENTRY(ELF32_TABLE(hdr, sec), i);
+
+		if (section->type == ESHT_PROGBITS || section->type == ESHT_NOBITS) {
+			uint8_t* section_name = (uint8_t*)ELF32_TABLE(hdr, hstr) + section->name;
+
+			uint32_t start = section->addr & -(PAGE_SIZE - 1);
+			uint32_t end = (section->addr + section->size) & -(PAGE_SIZE - 1);
+
+			uint32_t appendix = section->addr & (PAGE_SIZE - 1);
+
+			if (appendix)
+				start -= PAGE_SIZE;
+
+			// serialprintf(COM1, "Allocating %s (%08x#%08x:%08x) %s\n", section_name, appendix, start, end, (section->flags & SHF_WRITE) > 0 ? "RW" : "RO");
+			allocFrames(start, end, 1, 0, (section->flags & SHF_WRITE) > 0);
+		}
+	}
+
 	for (uint32_t i = 0; i < ELF32_PROGTAB_NENTRIES(hdr); i++) {
-		newTask->heap = createHeap(heap_addr, clonedDir, HEAP_START, HEAP_START + HEAP_MIN_SIZE, 0xCFFFF000, 0, 0);
 
 		ELF32ProgramHeader_t* ph = ELF32_PROGRAM(hdr, i);
-		if (ph->type == PT_LOAD) {
+		if (ph->type == PT_LOAD)
 			memcpy((uint8_t*)ph->vaddr, ((uint8_t*)hdr->header) + ph->offset, ph->filesz);
-		}
 	}
 
 	switchPageDir(savedDir);
@@ -299,16 +319,16 @@ uint32_t getStackBegin() {
 	return (uint32_t)stk;
 }
 
-void createStack(uint32_t newStart, uint32_t size) {
-	allocFramesReversed(newStart - size, newStart, 1, 0, 1);
+void createStack(uint32_t newStart, uint32_t size, bool isKernel) {
+	allocFramesReversed(newStart - size, newStart, 1, isKernel, 1);
 
 	uint32_t pdAddr;
 	asm volatile("mov %%cr3, %0" : "=r" (pdAddr));
 	asm volatile("mov %0, %%cr3" : : "r" (pdAddr));
 }
 
-void cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, uint32_t* ESP, uint32_t* EBP) {
-	createStack(newStart, size);
+void cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, bool isKernel, uint32_t* ESP, uint32_t* EBP) {
+	createStack(newStart, size, isKernel);
 
 	uint32_t oldESP = *ESP;
 	uint32_t oldEBP = *EBP;
@@ -335,7 +355,7 @@ void moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size) {
 	uint32_t esp;	asm volatile("mov %%esp, %0" : "=r" (esp));
 	uint32_t ebp;	asm volatile("mov %%ebp, %0" : "=r" (ebp));
 
-	cloneStack(oldStart, newStart, size, &esp, &ebp);
+	cloneStack(oldStart, newStart, size, true, &esp, &ebp);
 
 	asm volatile("mov %0, %%esp" : : "r" (esp));
 	asm volatile("mov %0, %%ebp" : : "r" (ebp));

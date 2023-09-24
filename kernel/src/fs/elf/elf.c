@@ -64,6 +64,9 @@ ELF32Symbol_t* ELFGetNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint3
 		if (!STT_CHECKTYPE(symbol, type))
 			continue;
 
+		if (!nearest)
+			nearest = symbol;
+			
 		if ((address - symbol->value) < (address - nearest->value))
 			nearest = symbol;
 	}

@@ -6,27 +6,85 @@
 
 bool _running = true;
 
+void memPrint(uint8_t* mem, uint32_t size) {
+	#define OUT_W 16
+	
+	printf("---- memory start at 0x%08x ----\n", mem);
+	for (uint32_t i = 0; i < size / OUT_W; i++) {
+		printf("%08x | ", mem + (OUT_W * i));
+		for (uint32_t j = 0; j < OUT_W; j++) {
+			printf("%02x ", mem[(OUT_W * i) + j]);
+		}
+		printf("| ");
+		for (uint32_t j = 0; j < OUT_W; j++) {
+			if (mem[(OUT_W * i) + j]  > 31)
+				printf("%.1c", mem[(OUT_W * i) + j]);
+			else
+				printf(".");
+		}
+		printf("\n");
+	}
+	printf("---- memory end at 0x%08x ----\n", mem + size);
+}
+
 void print_prompt() {
     printf("shell(%d)> ", getPID());
 }
 
 void handle_command(char* command) {
-    char* token = strtok(command, " ");
+    char* argv[16];
+    uint32_t argc = 0;
 
-    if (!token)
+    char* cmd = strtok(command, " ");
+
+    if (!cmd)
         return;
 
-    if (strcmp(token, "info") == 0) {
-        printf(INFO);
-    } else if (strcmp(token, "getpid") == 0) {
-        printf("%d\n", getPID());
-    } else if (strcmp(token, "getring") == 0) {
-        printf("%d\n", getRing());
-    } else if (strcmp(token, "exit") == 0) {
-        _running = false;
-    } else {
-        printf("Command %s not found\n", token);
+    for (; argc < 16; argc++) {
+        char* arg = strtok(NULL, " ");
+
+        if (arg == NULL)
+            break;
+
+        argv[argc] = arg;
     }
+
+    #define COMMAND0(c)   if (strcmp(cmd, #c) == 0) {
+    #define COMMAND(c)    } else if (strcmp(cmd, #c) == 0) {
+    #define BAD_COMMAND()   } else {
+    #define END()           }
+
+    COMMAND0(info)
+        printf(INFO);
+   
+    COMMAND(getpid)
+        printf("%d\n", getPID());
+   
+    COMMAND(getring)
+        printf("%d\n", getRing());
+    
+    COMMAND(readmem)        
+        if (argc < 2)
+            return;
+
+        int32_t address = strtoi(argv[0], NULL, 16);
+        int32_t count = atoi(argv[1]);
+        
+        memPrint((uint8_t*)address, (uint32_t)count);
+
+    COMMAND(echo)
+        for (uint32_t i = 0; i < argc; i++)
+            printf("%s ", argv[i]);
+
+        printf("\n");
+        
+    COMMAND(exit)
+        _running = false;
+
+    BAD_COMMAND()
+        printf("Command %s not found\n", cmd);
+    
+    END()
 }
 
 int32_t main() {

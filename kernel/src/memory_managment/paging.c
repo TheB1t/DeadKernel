@@ -149,8 +149,17 @@ void freeFrames(uint32_t start, uint32_t end) {
  *	Allocates memory for the kernel section
  */
 void allocKernelSection(ELF32SectionHeader_t* sec) {
-	if (sec != NULL)
-		allocFramesMirrored(sec->addr, sec->addr + sec->size, 1, 0, 0);
+	if (sec != NULL) {
+		uint32_t start = sec->addr & -(PAGE_SIZE - 1);
+		uint32_t end = (sec->addr + sec->size) & -(PAGE_SIZE - 1);
+
+		uint32_t appendix = sec->addr & (PAGE_SIZE - 1);
+
+		if (appendix)
+			start -= PAGE_SIZE;
+
+		allocFramesMirrored(start, end, 1, 1, (sec->flags & SHF_WRITE) > 0);
+	}
 }
 
 /*
@@ -202,19 +211,19 @@ void initPaging() {
 		allocKernelSectionByName(".shstrtab");
 	} else {
 		//Else, alloc all memory from zero to placementAddress
-		allocFramesMirrored(0, placementAddress, 1, 0, 0);
+		allocFramesMirrored(0, placementAddress, 1, 1, 0);
 	}
 	//Page allocation for memory allocated before page mode was enabled
-	allocFramesMirrored((uint32_t)&end, placementAddress + PAGE_SIZE, 1, 0, 0);
+	allocFramesMirrored((uint32_t)&end, placementAddress + PAGE_SIZE, 1, 1, 0);
 
 	//Allocating kernel heap
-	allocFrames(KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 1, 0, 0);
+	allocFrames(KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 1, 1, 1);
 
 	registerInterruptHandler(14, pageFault);
 
 	switchPageDir(kernelDir);
 	
-	kernelHeap = createHeap(kheap_addr, kernelDir, KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 0xCFFFF000, 0, 0);
+	kernelHeap = createHeap(kheap_addr, kernelDir, KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 0xCFFFF000, 1, 0);
 }
 
 /*
@@ -275,44 +284,50 @@ void pageFault(CPURegisters_t* regs) {
     char* err = "Unknown error";
 	bool resolved = false;
     
+	ELF32SectionHeader_t* faulted_section = NULL;
+	if (isTaskingInit() && currentTask != kernelTask) {
+		for (uint32_t i = 0; i < ELF32_SECTAB_NENTRIES(currentTask->elf_obj); i++) {
+			ELF32SectionHeader_t* section = ELF32_ENTRY(ELF32_TABLE(currentTask->elf_obj, sec), i);
+
+			if (!faulted_section)
+				faulted_section = section;
+
+			if ((faultingAddress - section->addr) < (faultingAddress - faulted_section->addr))
+				faulted_section = section;
+		}
+	}
+
     if (!(regs->err_code & 0x1)) {
     	err = "Page not present";
 
 		PageDir_t* savedDir = NULL;
 
-		if (isTaskingInit()) {
-			if (regs->cr3 == currentTask->pageDir->physicalAddr)
-				if (currentDir != currentTask->pageDir)
-					savedDir = switchPageDir(currentTask->pageDir);
-
-		} else if (regs->cr3 != currentDir->physicalAddr) {
-			savedDir = switchPageDir(currentDir);
-		}
-		
-		if (currentDir == kernelDir) {
+		if (regs->cr3 == currentDir->physicalAddr && currentDir == kernelDir && (regs->cs & 3) == 0) {
+			serialprintf(COM1, "[Page Fault][Kernel][Self] Allocating mirrored %08x:%08x\n", faultingAddress, faultingAddress + PAGE_SIZE);
 			allocFramesMirrored(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 0);
-		} else {
-			allocFrames(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 1);
+			resolved = true;
 		}
-
-		if (savedDir) {
-			switchPageDir(savedDir);
-		}
-
-		resolved = true;
 		
-	} else if (regs->err_code & 0x2)
+	} else if (regs->err_code & 0x2) {
     	err = "Page is read-only";
-    	
-    else if (regs->err_code & 0x4)
+
+	} else if (regs->err_code & 0x4)
     	err = "Processor in user-mode";
     	 
     else if (regs->err_code & 0x8)
     	err = "Overwrite CPU-reserved bits";
 
 	if (!resolved) {
-    	LOG_INFO("Page fault [0x%x] %s (eip 0x%08x) (unresolved)", faultingAddress, err, regs->eip);
-		PANIC("Page fault");	
+		uint8_t* module_name = "kernel";
+		uint8_t* section_name = "unk";
+
+		if (faulted_section) {
+			section_name = (uint8_t*)ELF32_TABLE(currentTask->elf_obj, hstr) + faulted_section->name;
+			module_name = getModuleName(currentTask->elf_obj);
+		}
+
+    	LOG_INFO("[%s][%s][0x%x] Page fault. %s (unresolved)", module_name, section_name, faultingAddress, err);
+		PANIC("Page fault");
 	}
 }
 

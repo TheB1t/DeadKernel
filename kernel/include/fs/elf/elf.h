@@ -40,6 +40,20 @@ typedef		uint32_t	ELF32_Word_t;
 #define	ESHT_NOBITS 	8
 #define	ESHT_REL 		9
 
+#define	SHF_WRITE				0x1
+#define	SHF_ALLOC 				0x2
+#define	SHF_EXECINSTR			0x4
+#define	SHF_MERGE				0x10
+#define	SHF_STRINGS				0x20
+#define	SHF_INFO_LINK			0x40
+#define	SHF_LINK_ORDER			0x80
+#define	SHF_OS_NONCONFORMING	0x100
+#define	SHF_GROUP				0x200
+#define	SHF_TLS					0x400
+#define	SHF_COMPRESSED			0x800
+#define	SHF_MASKOS				0x0ff00000
+#define	SHF_MASKPROC			0xf0000000
+
 #define	PT_NULL 	0
 #define	PT_LOAD 	1
 #define	PT_DYNAMIC 	2
