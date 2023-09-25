@@ -1,13 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <syscall.h>
+#include <drivers/pci/pci.h>
 
 #define INFO "shell v0.1 by Bit\n"
 
 bool _running = true;
 
 void memPrint(uint8_t* mem, uint32_t size) {
-	#define OUT_W 16
+	#define OUT_W 8
 	
 	printf("---- memory start at 0x%08x ----\n", mem);
 	for (uint32_t i = 0; i < size / OUT_W; i++) {
@@ -34,6 +35,9 @@ void print_prompt() {
 void handle_command(char* command) {
     char* argv[16];
     uint32_t argc = 0;
+
+    if (strlen(command) == 0)
+        return;
 
     char* cmd = strtok(command, " ");
 
@@ -77,7 +81,17 @@ void handle_command(char* command) {
             printf("%s ", argv[i]);
 
         printf("\n");
+    
+    COMMAND(lspci)
+        PCIDevice_t devices[256];
+
+        uint32_t count = PCIDirectScan(devices);
         
+        for (uint32_t i = 0; i < count; i++) {
+            PCIDevice_t* device = &devices[i];
+            printf("%03x:%02x:%02x %s (%s)\n", device->bus, device->dev, device->fn, PCIGetClassName(device->class), PCIGetVendorName(device->vendor));
+        }
+
     COMMAND(exit)
         _running = false;
 
@@ -90,6 +104,10 @@ void handle_command(char* command) {
 int32_t main() {
     uint32_t commandSize = 128;
     char* command = (char*)malloc(commandSize);
+    memset(command, 0, commandSize);
+
+    printf("Command str ptr: 0x%08x\n", command);
+
     char* ptr = command;
 
 
@@ -107,6 +125,8 @@ int32_t main() {
                 ptr = command;
 
                 handle_command(command);
+                memset(command, 0, commandSize);
+
                 print_prompt();
                 break;
             

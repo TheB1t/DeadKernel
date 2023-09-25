@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/common.h>
+#include <stdlib.h>
 
 #define PCIBIOS_PCI_BIOS_PRESENT		0xb101
 #define PCIBIOS_FIND_PCI_DEVICE			0xb102

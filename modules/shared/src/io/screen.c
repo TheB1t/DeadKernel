@@ -52,6 +52,7 @@ void printf(const char* format, ...) {
 
 				case 'c':
 					screenPutChar(*((int*) arg++));
+					break;
 				
 				default:
 					if (*(format - 2) == '%') {

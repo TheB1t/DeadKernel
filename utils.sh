@@ -107,6 +107,9 @@ function main() {
     "run")
         sudo qemu-system-x86_64 -hda ${IMAGE_FILE}.img -machine q35 -no-reboot -serial stdio
         ;;
+    "run_debug")
+        sudo qemu-system-x86_64 -s -S -hda ${IMAGE_FILE}.img -machine q35 -no-reboot -serial stdio
+        ;;
 	"mount")
         create_loop
         mount_loop

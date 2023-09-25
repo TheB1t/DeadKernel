@@ -11,7 +11,7 @@
 
 #define KERNEL_STACK_SIZE			(2048)
 
-#define	PROCESS_STACK_SIZE			(0x2000)
+#define	PROCESS_STACK_SIZE			(0x4000)
 #define BASE_PROCESS_ESP			(0xB0000000)
 
 #define QUEUE_TO_TASK(q)			((Task_t*)&q)
@@ -49,7 +49,7 @@ extern Task_t* currentTask;
 void		initTasking();
 void		switchTask(CPURegisters_t* regs);
 void		copyFromUser(void* ptr0, void* userPtr, uint32_t size);
-void		copyToUser(void* ptr0, void* userPtr, uint32_t size);
+void		copyToUser(void* userPtr, void* ptr0, uint32_t size);
 Task_t*		makeTaskFromELF(ELF32Obj_t* hdr);
 int32_t		runTask(Task_t* task);
 void		stopTask(Task_t* task);

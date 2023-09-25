@@ -4,6 +4,7 @@
 #include <multitasking/task.h>
 #include <io/keyboard.h>
 #include <memory_managment/user_heap.h>
+#include <drivers/pci/pci_user.h>
 
 extern uint32_t callSysCall(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, void*);
 static void SysCallHandler();
@@ -34,6 +35,8 @@ void initSysCalls() {
 
     addSysCall(&user_malloc);
     addSysCall(&user_free);
+
+	addSysCall(&user_PCIDirectScan);
 
 	registerInterruptHandler(128, &SysCallHandler);
 }

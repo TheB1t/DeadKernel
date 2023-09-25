@@ -9,9 +9,6 @@ Task_t* kernelTask		= 0;
 Task_t* currentTask		= 0;
 
 TaskQueue_t mainQueue;
-
-extern void loadEntry();
-
 uint32_t nextPID = 0;
 
 void		insertTask(TaskQueue_t* queue, Task_t* task);
@@ -26,7 +23,6 @@ void		yieldInterrupt(CPURegisters_t* regs);
 void initTasking() {
 	DISABLE_INTERRUPTS();
 	
-	// globalMutex = mutex_alloc();
 	initQueue(&mainQueue);
 
 	moveStack(getStackBegin(), 0xE0000000, 0x8000);
@@ -154,7 +150,7 @@ void copyFromUser(void* ptr0, void* userPtr, uint32_t size) {
 	ENABLE_INTERRUPTS();
 }
 
-void copyToUser(void* ptr0, void* userPtr, uint32_t size) {
+void copyToUser(void* userPtr, void* ptr0, uint32_t size) {
 	DISABLE_INTERRUPTS();
 
 	PageDir_t* savedDir = switchPageDir(currentTask->pageDir);

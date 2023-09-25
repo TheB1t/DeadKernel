@@ -27,6 +27,8 @@ SYSTEMCALL 7, keyboardGetChar
 SYSTEMCALL 8, malloc
 SYSTEMCALL 9, free
 
+SYSTEMCALL 10, PCIDirectScan
+
 [GLOBAL yield]
 yield:
 	int 0x40

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <drivers/pci/pci_types.h>
 
 extern uint32_t	getPID();
 
@@ -15,5 +16,7 @@ extern char		keyboardGetChar();
 
 uint32_t        malloc(uint32_t size);
 void            free(void* addr);
+
+uint32_t        PCIDirectScan(PCIDevice_t* devices);
 
 extern void yield();

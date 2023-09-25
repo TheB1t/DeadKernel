@@ -303,7 +303,7 @@ void pageFault(CPURegisters_t* regs) {
 		PageDir_t* savedDir = NULL;
 
 		if (regs->cr3 == currentDir->physicalAddr && currentDir == kernelDir && (regs->cs & 3) == 0) {
-			serialprintf(COM1, "[Page Fault][Kernel][Self] Allocating mirrored %08x:%08x\n", faultingAddress, faultingAddress + PAGE_SIZE);
+			printf("[Page Fault][Kernel][Self] Allocating mirrored %08x:%08x\n", faultingAddress, faultingAddress + PAGE_SIZE);
 			allocFramesMirrored(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 0);
 			resolved = true;
 		}
