@@ -11,8 +11,6 @@ cyclic_buffer_t* cyclic_buffer_init(uint32_t size) {
     buffer->rear = -1;
     buffer->count = 0;
 
-    mutex_init(&buffer->mutex);
-
     return buffer;
 }
 
@@ -22,34 +20,39 @@ void cyclic_buffer_free(cyclic_buffer_t* buffer) {
 }
 
 int cyclic_buffer_enqueue(cyclic_buffer_t* buffer, uint8_t value) {
-    mutex_lock(&buffer->mutex);
-
     if (buffer->count < buffer->size) {
         buffer->rear = (buffer->rear + 1) % buffer->size;
         buffer->data[buffer->rear] = value;
         buffer->count++;
     } else goto _error;
 
-    mutex_unlock(&buffer->mutex);
     return 0;
+
 _error:
-    mutex_unlock(&buffer->mutex);
     return -1;
 }
 
 int cyclic_buffer_dequeue(cyclic_buffer_t* buffer, uint8_t* value) {
-    mutex_lock(&buffer->mutex);
-
     if (buffer->count > 0) {
         *value = buffer->data[buffer->front];
         buffer->front = (buffer->front + 1) % buffer->size;
         buffer->count--;
     } else goto _error;
 
-    mutex_unlock(&buffer->mutex);
     return 0;
+    
 _error:
-    mutex_unlock(&buffer->mutex);
+    return -1;
+}
+
+int cyclic_buffer_read(cyclic_buffer_t* buffer, uint8_t* value) {
+    if (buffer->count > 0) {
+        *value = buffer->data[buffer->front];
+    } else goto _error;
+
+    return 0;
+    
+_error:
     return -1;
 }
 

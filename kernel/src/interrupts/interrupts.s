@@ -60,7 +60,6 @@ ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
 
-ISR_NOERRCODE 64
 ISR_NOERRCODE 128
 
 IRQ		0, 32
@@ -163,17 +162,13 @@ ASMInterruptPreHandler:
 	mov fs, ax
 	mov gs, ax
 
-	mov eax, [__interruptsDisable]
-	inc eax
-	mov [__interruptsDisable], eax
+	lock inc dword [__interruptsDisable]
 
 	push esp
 	call MainInterruptHandler
     add esp, 4
 
-	mov eax, [__interruptsDisable]
-	inc eax
-	mov [__interruptsDisable], eax
+	lock dec dword [__interruptsDisable]
 
 	mov ax, [esp + CPURegs._ds]
 	mov ds, ax

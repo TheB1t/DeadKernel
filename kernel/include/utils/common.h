@@ -12,8 +12,15 @@
 #define PANIC(msg)	kernel_panic(msg)
 #define ASSERT(b)	((b) ? (void)0 : kernel_assert(#b, __FILE__, __LINE__))
 
-#define DISABLE_INTERRUPTS() __disableInterrupts()
-#define ENABLE_INTERRUPTS() __enableInterrupts()
+#if defined(DEBUG_INTERRUPT_TOGGLERS)
+	extern uint32_t __interruptsDisable;
+
+	#define DISABLE_INTERRUPTS() serialprintf(COM1, "Trying to disable interrupts (%d)...\n", __interruptsDisable); __disableInterrupts()
+	#define ENABLE_INTERRUPTS() serialprintf(COM1, "Trying to enable interrupts (%d)...\n", __interruptsDisable); __enableInterrupts()
+#else
+	#define DISABLE_INTERRUPTS() __disableInterrupts()
+	#define ENABLE_INTERRUPTS() __enableInterrupts()
+#endif
 
 #define LOG(level, format, ...)		printf("[%s] " format "\n", level, ##__VA_ARGS__)
 #define LOG_INFO(format, ...)		LOG("INFO", format, ##__VA_ARGS__)

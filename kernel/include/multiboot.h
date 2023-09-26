@@ -41,11 +41,27 @@ struct multiboot {
    uint32_t vbe_interface_len;
 }  __attribute__((packed));
 
-typedef struct  multiboot multiboot_t;
-
-typedef struct {
+struct multiboot_mods {
 	uint32_t	mod_start;
 	uint32_t	mod_end;
 	uint32_t	string;
 	uint32_t	reserver;
-} multiboot_mods_t;
+} __attribute__((packed));
+
+struct multiboot_mmap_entry {
+  uint32_t size;
+  uint32_t addr_low;
+  uint32_t addr_high;
+  uint32_t len_low;
+  uint32_t len_high;
+#define MULTIBOOT_MEMORY_AVAILABLE              1
+#define MULTIBOOT_MEMORY_RESERVED               2
+#define MULTIBOOT_MEMORY_ACPI_RECLAIMABLE       3
+#define MULTIBOOT_MEMORY_NVS                    4
+#define MULTIBOOT_MEMORY_BADRAM                 5
+  uint32_t type;
+} __attribute__((packed));
+
+typedef struct multiboot multiboot_t;
+typedef struct multiboot_mods multiboot_mods_t;
+typedef struct multiboot_mmap_entry multiboot_memory_map_t;

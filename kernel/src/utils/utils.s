@@ -1,28 +1,43 @@
-[EXTERN __interruptsDisable]
-
+[GLOBAL __interruptsDisable]
 [GLOBAL __disableInterrupts]
+type __disableInterrupts function
 __disableInterrupts:
-    mov eax, [__interruptsDisable]
+    cli
+    
+    lock inc dword [__interruptsDisable]
 
+    push eax
+
+    xor eax, eax
+    mov eax, [__interruptsDisable]
     cmp eax, 0
     jnz .continue
-    cli
 
-	inc eax
-	mov [__interruptsDisable], eax
+	lock dec dword [__interruptsDisable]
 
+    sti
 .continue:
+    pop eax
     ret
 
 [GLOBAL __enableInterrupts]
+type __enableInterrupts function
 __enableInterrupts:
-    mov eax, [__interruptsDisable]
-	dec eax
-	mov [__interruptsDisable], eax
+    cli
+    
+    push eax
 
+    lock dec dword [__interruptsDisable]
+
+    xor eax, eax
+    mov eax, [__interruptsDisable]
     cmp eax, 0
     jnz .continue
     sti
 
 .continue:
+    pop eax
     ret
+
+section .data
+    __interruptsDisable: dd 0

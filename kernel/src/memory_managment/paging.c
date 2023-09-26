@@ -4,11 +4,14 @@
 #include <io/serial.h>
 #include <multitasking/task.h>
 
-#define INDEX_FROM_BIT(a)	(a / 32)
-#define OFFSET_FROM_BIT(a)	(a % 32)
-#define ADDR2FRAME(a)		(a / PAGE_SIZE)
-#define FRAME2INDEX(a)		(a / 1024)
-#define FRAME2OFFSET(a)		(a % 1024)
+#define INDEX_FROM_BIT(a)	((a) / 32)
+#define OFFSET_FROM_BIT(a)	((a) % 32)
+#define ADDR2FRAME(a)		((a) / PAGE_SIZE)
+#define FRAME2INDEX(a)		((a) / 1024)
+#define FRAME2OFFSET(a)		((a) % 1024)
+#define FRAME2ADDR(a)       ((a) * PAGE_SIZE)
+#define INDEX2FRAME(a)      ((a) * 1024)
+#define OFFSET2FRAME(a)		((a))
 #define SET_FRAME(a)		(frames[INDEX_FROM_BIT(ADDR2FRAME(a))] |= (0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a))))
 #define CLEAR_FRAME(a)		(frames[INDEX_FROM_BIT(ADDR2FRAME(a))] &= ~(0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a))))
 #define READ_FRAME(a)		((frames[INDEX_FROM_BIT(ADDR2FRAME(a))] & (0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a)))) > 0)
@@ -50,7 +53,7 @@ void linkFrame(Page_t* page, uint32_t alignedAddress, uint32_t isKernel, uint32_
 		return;
 
 	if (READ_FRAME(alignedAddress)) {
-		WARN("Allocating busy frame!");
+		// WARN("Allocating busy frame!");
 		// TODO: Need to rework this part
 		// return;
 	}
@@ -285,17 +288,9 @@ void pageFault(CPURegisters_t* regs) {
 	bool resolved = false;
     
 	ELF32SectionHeader_t* faulted_section = NULL;
-	if (isTaskingInit() && currentTask != kernelTask) {
-		for (uint32_t i = 0; i < ELF32_SECTAB_NENTRIES(currentTask->elf_obj); i++) {
-			ELF32SectionHeader_t* section = ELF32_ENTRY(ELF32_TABLE(currentTask->elf_obj, sec), i);
 
-			if (!faulted_section)
-				faulted_section = section;
-
-			if ((faultingAddress - section->addr) < (faultingAddress - faulted_section->addr))
-				faulted_section = section;
-		}
-	}
+	if (isTaskingInit() && currentTask != kernelTask)
+		faulted_section = ELFFindNearestSectionByAddress(currentTask->elf_obj, faultingAddress);
 
     if (!(regs->err_code & 0x1)) {
     	err = "Page not present";
@@ -303,7 +298,7 @@ void pageFault(CPURegisters_t* regs) {
 		PageDir_t* savedDir = NULL;
 
 		if (regs->cr3 == currentDir->physicalAddr && currentDir == kernelDir && (regs->cs & 3) == 0) {
-			printf("[Page Fault][Kernel][Self] Allocating mirrored %08x:%08x\n", faultingAddress, faultingAddress + PAGE_SIZE);
+			serialprintf(COM1, "[Page Fault][Kernel][Self] Allocating mirrored %08x:%08x\n", faultingAddress, faultingAddress + PAGE_SIZE);
 			allocFramesMirrored(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 0);
 			resolved = true;
 		}
@@ -351,7 +346,7 @@ static PageTable_t* cloneTable(PageTable_t* src, uint32_t* physAddr) {
 		table->pages[i].accessed	= src->pages[i].accessed	? 1 : 0;
 		table->pages[i].dirty		= src->pages[i].dirty		? 1 : 0;
 		table->pages[i].isKernel	= src->pages[i].isKernel	? 1 : 0;
-		
+
 		copyPagePhysical(src->pages[i].frame * PAGE_SIZE, table->pages[i].frame * PAGE_SIZE);
 	}
 
@@ -380,7 +375,7 @@ PageDir_t* cloneDir(PageDir_t* src) {
 		} else {
 			phys = 0;
 			dir->tables[i]			= cloneTable(src->tables[i], &phys);
-			dir->tablesPhysical[i]	= phys | 0x07;
+			dir->tablesPhysical[i]	= phys | 0x07;		
 		}
 	}
 	return dir;

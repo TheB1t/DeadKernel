@@ -1,8 +1,13 @@
 #include <io/keyboard.h>
 
 char getch() {
-    while (!keyboardReadReady());
+    while (!keyboardReadReady()) {
+        // Double check
+        if (keyboardReadReady())
+            break;
+
         yield();
+    }
 
     return keyboardGetChar();
 }

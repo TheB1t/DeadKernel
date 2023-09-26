@@ -112,17 +112,24 @@ int32_t atoi(char* str) {
     return base * sign;
 }
 
-int isspace(int ch) {
+bool isspace(char ch) {
     return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f');
 }
 
-int isdigit(int ch) {
+char isdigit(char ch) {
     return (ch >= '0' && ch <= '9');
 }
 
-int tolower(int ch) {
+char tolower(char ch) {
     if (ch >= 'A' && ch <= 'Z')
         return ch + ('a' - 'A');
+
+    return ch;
+}
+
+char toupper(char ch) {
+    if (ch >= 'a' && ch <= 'z')
+        return ch - ('a' - 'A');
 
     return ch;
 }

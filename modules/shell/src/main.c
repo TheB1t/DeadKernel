@@ -2,10 +2,13 @@
 #include <stdio.h>
 #include <syscall.h>
 #include <drivers/pci/pci.h>
+#include <multitasking/mutex.h>
 
 #define INFO "shell v0.1 by Bit\n"
 
 bool _running = true;
+mutex_t mutex;
+uint32_t creator;
 
 void memPrint(uint8_t* mem, uint32_t size) {
 	#define OUT_W 8
@@ -91,6 +94,27 @@ void handle_command(char* command) {
             PCIDevice_t* device = &devices[i];
             printf("%03x:%02x:%02x %s (%s)\n", device->bus, device->dev, device->fn, PCIGetClassName(device->class), PCIGetVendorName(device->vendor));
         }
+    COMMAND(shell)
+        if (getPID() != creator) {
+            printf("Error!\n");
+            return;
+        }
+        int32_t new_pid = fork();
+
+        if (new_pid == -1)
+            return;
+
+        if (new_pid > 0) {
+            // Little 'delay' :/
+            for (uint32_t i = 0; i < 15; i++) 
+                yield();
+
+            mutex_lock(&mutex);
+            mutex_unlock(&mutex);
+        } else {
+            mutex_lock(&mutex);
+            printf("New shell pid (%d): %d\n", getPID(), new_pid);
+        }
 
     COMMAND(exit)
         _running = false;
@@ -102,14 +126,14 @@ void handle_command(char* command) {
 }
 
 int32_t main() {
-    uint32_t commandSize = 128;
-    char* command = (char*)malloc(commandSize);
-    memset(command, 0, commandSize);
-
-    printf("Command str ptr: 0x%08x\n", command);
-
+    char command[128] = { 0 };
     char* ptr = command;
 
+    creator = getPID();
+    mutex_init(&mutex);
+
+    printf("Command str ptr: 0x%08x\n", ptr);
+    printf("Semaphore id: %d\n", mutex.semaphore_id);
 
     printf(INFO);
     print_prompt();
@@ -125,7 +149,7 @@ int32_t main() {
                 ptr = command;
 
                 handle_command(command);
-                memset(command, 0, commandSize);
+                memset(command, 0, 128);
 
                 print_prompt();
                 break;
@@ -147,6 +171,10 @@ int32_t main() {
     }
 
     printf("\nExiting...\n");
-    free(command);
+
+    mutex_unlock(&mutex);
+    if (getPID() == creator)
+        mutex_free(&mutex);
+
 	return 0xDEADBEEF;
 }

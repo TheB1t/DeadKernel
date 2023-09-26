@@ -14,7 +14,7 @@ SET(CMAKE_ASM_NASM_FLAGS "-felf")
 SET(CMAKE_C_STANDARD 99)
 SET(CMAKE_C_FLAGS_RELEASE "")
 SET(CMAKE_C_FLAGS_DEBUG "-g3")
-SET(CMAKE_C_FLAGS "-m32 -fno-pic -fno-pie -nostdlib -nostdinc -fno-builtin -fno-stack-protector")
+SET(CMAKE_C_FLAGS "-m32 -fno-pic -fno-pie -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-asynchronous-unwind-tables")
 
 FILE(GLOB_RECURSE SHARED_SRC_FILES "shared/src/*.c")
 FILE(GLOB_RECURSE SHARED_ASM_FILES "shared/src/*.s")

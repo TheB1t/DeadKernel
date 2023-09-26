@@ -1,13 +1,10 @@
-[EXTERN __enableInterrupts]
-[EXTERN __disableInterrupts]
-
 [GLOBAL copyPagePhysical]
 type copyPagePhysical function
 copyPagePhysical:
 	push ebx
 	pushf
 
-	call __disableInterrupts
+	cli
 
 	mov ebx, [esp + 12]
 	mov ecx, [esp + 16]
@@ -30,7 +27,7 @@ copyPagePhysical:
 	or	edx, 0x80000000
 	mov cr0, edx
 
-	call __enableInterrupts
+	sti
 	
 	popf
 	pop ebx	

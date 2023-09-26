@@ -28,7 +28,7 @@ void GPFHandler(CPURegisters_t* regs) {
 			regs->eip
 		);
 	}
-	//stackTrace(6);
+	stackTrace(20);
 	//BREAKPOINT;
 	for(;;);
 }
@@ -77,5 +77,17 @@ int32_t main(multiboot_t* mboot) {
 		WARN("Section table can't load! Stacktrace in semi-functional mode");
 	}
 	
+    // for(uint32_t i = 0; i < mboot->mmap_length; i += sizeof(multiboot_memory_map_t)) {
+    //     multiboot_memory_map_t* mmmt = (multiboot_memory_map_t*) (mboot->mmap_addr + i);
+ 
+    //     printf("Start Addr: %08x | Length: %08x | Size: %04x | Status: %s\n",
+    //         mmmt->addr_low, mmmt->len_low, mmmt->size, 
+	// 		mmmt->type == MULTIBOOT_MEMORY_AVAILABLE ? "Available" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_RESERVED ? "Reserved" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE ? "ACPI" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_NVS ? "NVS" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_BADRAM ? "BadRam" : "Unknown");
+    // }
+
 	return kernel_main();
 }

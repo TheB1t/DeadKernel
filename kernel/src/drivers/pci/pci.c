@@ -5,6 +5,9 @@ static AddrIndirect PCIBIOSIndirect = { 0, 0 };
 static uint8_t PCI_HWMech, PCI_majorVer, PCI_minorVer;
 
 uint8_t PCIInit() {
+	if (!BIOS32GetAddress())
+		return PCI_OP_FAIL;
+
 	if (PCICheckSupport(&PCI_majorVer, &PCI_minorVer, &PCI_HWMech) == PCI_OP_SUCC) {
 		LOG_INFO("[PCI] PCI BIOS found %02x ver %02x.%02x", PCI_HWMech, PCI_majorVer, PCI_minorVer);
 		return PCI_OP_SUCC;

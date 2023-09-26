@@ -31,6 +31,28 @@ ELF32SectionHeader_t* ELFLookupSectionByType(ELF32Obj_t* hdr, uint8_t type) {
 	return NULL;
 }
 
+ELF32SectionHeader_t* ELFFindNearestSectionByAddress(ELF32Obj_t* hdr, uint32_t address) {
+	if (ELF32_SECTAB_NENTRIES(hdr) == 0) goto _error;
+	if (ELF32_SYMTAB_NENTRIES(hdr) == 0) goto _error;
+	if (address < hdr->start || address > hdr->end) goto _error;
+
+	ELF32SectionHeader_t* nearest = NULL;
+
+	for (uint32_t i = 0; i < ELF32_SECTAB_NENTRIES(hdr); i++) {
+		ELF32SectionHeader_t* section = ELF32_ENTRY(ELF32_TABLE(hdr, sec), i);
+
+		if (!nearest)
+			nearest = section;
+
+		if ((address - section->addr) < (address - nearest->addr))
+			nearest = section;
+	}
+
+	return nearest;
+_error:
+	return NULL;
+}
+
 ELF32Symbol_t* ELFLookupSymbolByName(ELF32Obj_t* hdr, uint8_t type, char* name) {
 	if (ELF32_SECTAB_NENTRIES(hdr) == 0) goto _error;
 	if (ELF32_SYMTAB_NENTRIES(hdr) == 0) goto _error;
@@ -51,7 +73,7 @@ _error:
 	return NULL;
 }
 
-ELF32Symbol_t* ELFGetNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint32_t address) {
+ELF32Symbol_t* ELFFindNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint32_t address) {
 	if (ELF32_SECTAB_NENTRIES(hdr) == 0) goto _error;
 	if (ELF32_SYMTAB_NENTRIES(hdr) == 0) goto _error;
 	if (address < hdr->start || address > hdr->end) goto _error;

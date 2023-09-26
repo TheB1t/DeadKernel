@@ -17,7 +17,10 @@
 int32_t kernel_main() {
 	initSysTimer();
 	initPaging();
-	
+	serialInit(COM1, UART_BAUD_9600);
+	initSysCalls();
+	initTasking();
+
 	if (BIOS32Find()) {
 		LOG_INFO("BIOS32 found on 0x%08x", BIOS32GetAddress());
 	} else {
@@ -40,22 +43,22 @@ int32_t kernel_main() {
 	}
 
 	RSDP_t* rsdp = findRSDP();
-	LOG_INFO("RSDP %s", rsdp ? "Found" : "Not found");
+	// LOG_INFO("RSDP %s", rsdp ? "Found" : "Not found");
 	if (rsdp) {
 		LOG_INFO("RSDP v%d, OEM: 0x%02x%02x%02x%02x%02x%02x", rsdp->revision, rsdp->OEMID[5], rsdp->OEMID[4], rsdp->OEMID[3], rsdp->OEMID[2], rsdp->OEMID[1], rsdp->OEMID[0]);
 		RSDT_t* rsdt = findRSDT(rsdp);
-		LOG_INFO("RSDT %s", rsdt ? "Found" : "Not found");
+		// LOG_INFO("RSDT %s", rsdt ? "Found" : "Not found");
 
 		if (rsdt) {
 			printSDT(&rsdt->header);
 			FADT_t* fadt = findInSDT(FACP_SIGNATURE, (SDTHeader_t*)rsdt);
-			LOG_INFO("FADT %s", rsdt ? "Found" : "Not found");
+			// LOG_INFO("FADT %s", rsdt ? "Found" : "Not found");
 			if (fadt) {
 				asm volatile ("nop");
 			}
 
 			HPET_t* hpet = findInSDT(HPET_SIGNATURE, (SDTHeader_t*)rsdt);
-			LOG_INFO("HPET %s", hpet ? "Found" : "Not found");
+			// LOG_INFO("HPET %s", hpet ? "Found" : "Not found");
 			if (fadt) {
 				// LOG_INFO("HPET Info:");
 				// printf("Hardware rev: %d\n", hpet->hardware_rev_id);
@@ -65,10 +68,6 @@ int32_t kernel_main() {
 			}
 		}
 	}
-	serialInit(COM1, UART_BAUD_9600);
-
-	initSysCalls();
-	initTasking();
     
     LOG_INFO("Keyboard: %s", initKeyboard() == 0 ? "initialized" : "initialization failed");
 

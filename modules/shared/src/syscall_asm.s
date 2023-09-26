@@ -13,23 +13,22 @@
 	ret
 %endmacro
 
-SYSTEMCALL 0, getPID
+SYSTEMCALL 0x0, getPID
+SYSTEMCALL 0x1, yield
+SYSTEMCALL 0x2, fork
 
-SYSTEMCALL 1, screenGetColor
-SYSTEMCALL 2, screenSetColor
-SYSTEMCALL 3, screenPutChar
-SYSTEMCALL 4, screenPutString
-SYSTEMCALL 5, screenClear
+SYSTEMCALL 0x3, screenGetColor
+SYSTEMCALL 0x4, screenSetColor
+SYSTEMCALL 0x5, screenPutChar
+SYSTEMCALL 0x6, screenPutString
+SYSTEMCALL 0x7, screenClear
 
-SYSTEMCALL 6, keyboardReadReady
-SYSTEMCALL 7, keyboardGetChar
+SYSTEMCALL 0x8, keyboardReadReady
+SYSTEMCALL 0x9, keyboardGetChar
 
-SYSTEMCALL 8, malloc
-SYSTEMCALL 9, free
+SYSTEMCALL 0xa, malloc
+SYSTEMCALL 0xb, free
 
-SYSTEMCALL 10, PCIDirectScan
+SYSTEMCALL 0xc, PCIDirectScan
 
-[GLOBAL yield]
-yield:
-	int 0x40
-	ret
+SYSTEMCALL 0xd, semctl

@@ -22,6 +22,9 @@ struct list_head {
     struct list_head *next, *prev;
 };
 
+#define LIST_GET_HEAD(l) (&(l)->head)
+#define LIST_GET_LIST(l) (&(l)->list)
+
 #define LIST_HEAD_INIT(name) { &(name), &(name) }
 
 #define LIST_HEAD(name) \
@@ -180,6 +183,6 @@ static inline int list_empty(struct list_head *head)
 */
 #define list_for_each_safe(pos, n, head) \
     for (pos = (head)->next, n = pos->next; pos != (head); \
-         pos = n, n = \pos->next)
+         pos = n, n = pos->next)
 
 #endif // __LIST_H

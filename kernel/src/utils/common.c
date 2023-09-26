@@ -4,8 +4,6 @@
 #include <multitasking/systimer.h>
 #include <utils/stackTrace.h>
 
-uint32_t __interruptsDisable = 0;
-
 void memPrint(uint8_t* mem, uint32_t size) {
 	#define OUT_W 16
 	

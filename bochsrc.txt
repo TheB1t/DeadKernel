@@ -1,5 +1,6 @@
-clock: sync=realtime, time0=local
-cpu: ips=90000000, reset_on_triple_fault=0
+cpu: count=1, reset_on_triple_fault=0
+pci: enabled=1, chipset=i440fx, slot1=pcivga
+
 com1: enabled=1, mode=file, dev=serial.txt
 
 ata0-master: type=disk, mode=flat, path="disk.img"

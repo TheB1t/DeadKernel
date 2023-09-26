@@ -43,7 +43,7 @@ void printStackFrame(uint32_t address, bool ifFaulting) {
 	ELF32Symbol_t* symbol = NULL;
 
 	while (true) {
-		symbol = ELFGetNearestSymbolByAddress(hdr, STT_FUNC, address);
+		symbol = ELFFindNearestSymbolByAddress(hdr, STT_FUNC, address);
 
 		if (!symbol && isTaskingInit() && hdr != currentTask->elf_obj) {
 			hdr = currentTask->elf_obj;

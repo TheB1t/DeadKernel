@@ -200,8 +200,9 @@ typedef struct {
 #define STT_HIPROC 	15
    
 bool					ELF32CheckMagic(ELF32Header_t* hdr);
-ELF32SectionHeader_t* 	ELFLookupSectionByType(ELF32Obj_t* hdr, uint8_t type);
 ELF32SectionHeader_t* 	ELFLookupSectionByName(ELF32Obj_t* hdr, char* name);
+ELF32SectionHeader_t* 	ELFLookupSectionByType(ELF32Obj_t* hdr, uint8_t type);
+ELF32SectionHeader_t* 	ELFFindNearestSectionByAddress(ELF32Obj_t* hdr, uint32_t address);
 ELF32Symbol_t* 			ELFLookupSymbolByName(ELF32Obj_t* hdr, uint8_t type, char* name);
-ELF32Symbol_t* 			ELFGetNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint32_t address);
+ELF32Symbol_t* 			ELFFindNearestSymbolByAddress(ELF32Obj_t* hdr, uint8_t type, uint32_t address);
 bool 					ELFLoad(uint32_t address, ELF32Obj_t* out);
