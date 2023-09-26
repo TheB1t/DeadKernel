@@ -121,7 +121,10 @@ function main() {
 	*)
 	    [[ -n "$action" ]] && echo "Not implemented action $1" || echo "Action not passed"
 	    echo "Avaliable actions:"
-	    echo "	pack                : packing kernel"
+        echo "	init                : creating image"
+	    echo "	pack                : packing kernel + modules into image"
+        echo "	pack_pxe            : packing kernel + modules into /var/lib/tftpboot"
+        echo "	run                 : run image using qemu"
 	    echo "	mount               : mount image"
 	    echo "	umount              : umount image"	    
         ;;

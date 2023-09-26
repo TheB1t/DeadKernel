@@ -1,6 +1,6 @@
 # DeadKernel
 
-__Version:__ alpha-0.2
+__Version:__ alpha-0.21
 
 ### About DeadKernel
 
@@ -46,10 +46,11 @@ For building:
 	- [x] Page directory cloning
 	- [x] Page directory freeing
 	- [x] Primitive page-fault handling
-		- [x] Automatic page allocation if the page is not present
+		- [x] Automatic page allocation if the page is not present (not always)
 	- [x] Page directory switching
-- [x] Simply memory manager
+- [x] Heap
 	- [x] Alloc/free memory from kernel heap
+	- [x] Alloc/free memory from task heap
 - [x] Task sheduler
 	- [x] 7 task states
 	- [x] Creating task from ELF image
@@ -57,12 +58,16 @@ For building:
 	- [x] Detecting task completion
 	- [x] Halt CPU if all tasks finished (includes kernel)
 	- [x] Yielding
-	- [ ] Forking
+	- [x] Forking
+	- [x] Synchronization primitives
+		- [x] Semaphore
+		- [x] Mutex (semaphore based)
 - [x] Simply `PCI` bus driver
 - [x] Basic screen output support
 	- [x] Half-functionally printf
 - [x] Stack trace support
 	- [x] If GRUB (or other Multiboot-compliant bootloader) loads section table, stacktrace printed with function names
+	- [x] Also module symbol tracking
 - [x] Basic syscalls support
 - [x] Serial port driver
 - [x] Keyboard driver
@@ -72,11 +77,15 @@ For building:
 - [x] Module loading
 	- [x] Adding information to a module at compile time for identification by the kernel
 - [ ] All already implemented drivers as a module (including minimal drivers)
-- [ ] Simple filesystem driver
+- [ ] Filesystem drivers
+	- [ ] SFS
+	- [ ] FAT32\16
+	- [ ] ext2
 - [ ] Simple initrd
 - [ ] VESA driver
 - [ ] Ethernet driver
 - [ ] Network stack
+- [ ] stdio implementation (stdin, stdout, stderr)
 - [ ] Create cross-compiler
 - [ ] Port C library ([mlibc](https://github.com/managarm/mlibc/tree/master)?)
 - [ ] Port GCC
