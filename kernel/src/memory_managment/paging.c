@@ -2,12 +2,16 @@
 #include <memory_managment/kheap.h>
 #include <utils/stackTrace.h>
 #include <io/serial.h>
+#include <multitasking/task.h>
 
-#define INDEX_FROM_BIT(a)	(a / 32)
-#define OFFSET_FROM_BIT(a)	(a % 32)
-#define ADDR2FRAME(a)		(a / PAGE_SIZE)
-#define FRAME2INDEX(a)		(a / 1024)
-#define FRAME2OFFSET(a)		(a % 1024)
+#define INDEX_FROM_BIT(a)	((a) / 32)
+#define OFFSET_FROM_BIT(a)	((a) % 32)
+#define ADDR2FRAME(a)		((a) / PAGE_SIZE)
+#define FRAME2INDEX(a)		((a) / 1024)
+#define FRAME2OFFSET(a)		((a) % 1024)
+#define FRAME2ADDR(a)       ((a) * PAGE_SIZE)
+#define INDEX2FRAME(a)      ((a) * 1024)
+#define OFFSET2FRAME(a)		((a))
 #define SET_FRAME(a)		(frames[INDEX_FROM_BIT(ADDR2FRAME(a))] |= (0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a))))
 #define CLEAR_FRAME(a)		(frames[INDEX_FROM_BIT(ADDR2FRAME(a))] &= ~(0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a))))
 #define READ_FRAME(a)		((frames[INDEX_FROM_BIT(ADDR2FRAME(a))] & (0x1 << OFFSET_FROM_BIT(ADDR2FRAME(a)))) > 0)
@@ -21,9 +25,9 @@ uint32_t nframes;
 
 extern uint32_t start;
 extern uint32_t end;
-//extern void copyPagePhysical(uint32_t, uint32_t);
+
 extern uint32_t placementAddress;
-extern Heap_t* kernelHeap;
+
 
 extern void copyPagePhysical(uint32_t, uint32_t);
 
@@ -49,10 +53,9 @@ void linkFrame(Page_t* page, uint32_t alignedAddress, uint32_t isKernel, uint32_
 		return;
 
 	if (READ_FRAME(alignedAddress)) {
-		if (page->frame != (alignedAddress / PAGE_SIZE)) {
-			WARN("Try to allocating busy frame!");
-			return;
-		}
+		// WARN("Allocating busy frame!");
+		// TODO: Need to rework this part
+		// return;
 	}
 
 	SET_FRAME(alignedAddress);
@@ -148,16 +151,25 @@ void freeFrames(uint32_t start, uint32_t end) {
 /*
  *	Allocates memory for the kernel section
  */
-void allocKernelSection(KernelSectionHeader_t* sec) {
-	if (sec != NULL)
-		allocFramesMirrored(sec->addr, sec->addr + sec->size, 1, 0, 0);
+void allocKernelSection(ELF32SectionHeader_t* sec) {
+	if (sec != NULL) {
+		uint32_t start = sec->addr & -(PAGE_SIZE - 1);
+		uint32_t end = (sec->addr + sec->size) & -(PAGE_SIZE - 1);
+
+		uint32_t appendix = sec->addr & (PAGE_SIZE - 1);
+
+		if (appendix)
+			start -= PAGE_SIZE;
+
+		allocFramesMirrored(start, end, 1, 1, (sec->flags & SHF_WRITE) > 0);
+	}
 }
 
 /*
  *	Allocates memory for the kernel section by name
  */
 void allocKernelSectionByName(uint8_t* secName) {
-	allocKernelSection(kernelLookupSectionByName(secName));
+	allocKernelSection(ELFLookupSectionByName(KERNEL_TABLE_OBJ, secName));
 }
 
 /*
@@ -165,7 +177,7 @@ void allocKernelSectionByName(uint8_t* secName) {
  *	marks up the memory used by the kernel for its use
  */
 void initPaging() {
-	uint32_t memEndPageMB = 256;
+	uint32_t memEndPageMB = 1024;
 	uint32_t memEndPage = memEndPageMB * 1024 * 1024;
 
 	nframes = ADDR2FRAME(memEndPage);
@@ -183,7 +195,7 @@ void initPaging() {
 	kernelDir->physicalAddr = (uint32_t)kernelDir->tablesPhysical;
 
 	
-	for (uint32_t i = KHEAP_START; i < KHEAP_START + KHEAP_MIN_SIZE; i += PAGE_SIZE) 
+	for (uint32_t i = KHEAP_START; i < KHEAP_START + HEAP_MIN_SIZE; i += PAGE_SIZE) 
 		getPage(i, 1, kernelDir);
 
 	uint32_t kheap_addr = kmalloc(sizeof(Heap_t));
@@ -202,19 +214,19 @@ void initPaging() {
 		allocKernelSectionByName(".shstrtab");
 	} else {
 		//Else, alloc all memory from zero to placementAddress
-		allocFramesMirrored(0, placementAddress, 1, 0, 0);
+		allocFramesMirrored(0, placementAddress, 1, 1, 0);
 	}
 	//Page allocation for memory allocated before page mode was enabled
-	allocFramesMirrored((uint32_t)&end, placementAddress + PAGE_SIZE, 1, 0, 0);
+	allocFramesMirrored((uint32_t)&end, placementAddress + PAGE_SIZE, 1, 1, 0);
 
 	//Allocating kernel heap
-	allocFrames(KHEAP_START, KHEAP_START + KHEAP_MIN_SIZE, 1, 0, 0);
+	allocFrames(KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 1, 1, 1);
 
 	registerInterruptHandler(14, pageFault);
 
 	switchPageDir(kernelDir);
 	
-	kernelHeap = createHeap(kheap_addr, KHEAP_START, KHEAP_START + KHEAP_MIN_SIZE, 0xCFFFF000, 0, 0);
+	kernelHeap = createHeap(kheap_addr, kernelDir, KHEAP_START, KHEAP_START + HEAP_MIN_SIZE, 0xCFFFF000, 1, 0);
 }
 
 /*
@@ -273,21 +285,45 @@ void pageFault(CPURegisters_t* regs) {
     asm volatile ("mov %%cr2, %0" : "=r" (faultingAddress));
 
     char* err = "Unknown error";
+	bool resolved = false;
     
-    if (!(regs->err_code & 0x1)) 
+	ELF32SectionHeader_t* faulted_section = NULL;
+
+	if (isTaskingInit() && currentTask != kernelTask)
+		faulted_section = ELFFindNearestSectionByAddress(currentTask->elf_obj, faultingAddress);
+
+    if (!(regs->err_code & 0x1)) {
     	err = "Page not present";
-    	
-    if (regs->err_code & 0x2)
+
+		PageDir_t* savedDir = NULL;
+
+		if (regs->cr3 == currentDir->physicalAddr && currentDir == kernelDir && (regs->cs & 3) == 0) {
+			serialprintf(COM1, "[Page Fault][Kernel][Self] Allocating mirrored %08x:%08x\n", faultingAddress, faultingAddress + PAGE_SIZE);
+			allocFramesMirrored(faultingAddress, faultingAddress + PAGE_SIZE, 1, 0, 0);
+			resolved = true;
+		}
+		
+	} else if (regs->err_code & 0x2) {
     	err = "Page is read-only";
-    	
-    if (regs->err_code & 0x4)
+
+	} else if (regs->err_code & 0x4)
     	err = "Processor in user-mode";
     	 
-    if (regs->err_code & 0x8)
+    else if (regs->err_code & 0x8)
     	err = "Overwrite CPU-reserved bits";
 
-	LOG_INFO("Page fault [0x%x] %s (eip 0x%08x)", faultingAddress, err, regs->eip);
-    PANIC("Page fault");	
+	if (!resolved) {
+		uint8_t* module_name = "kernel";
+		uint8_t* section_name = "unk";
+
+		if (faulted_section) {
+			section_name = (uint8_t*)ELF32_TABLE(currentTask->elf_obj, hstr) + faulted_section->name;
+			module_name = getModuleName(currentTask->elf_obj);
+		}
+
+    	LOG_INFO("[%s][%s][0x%x] Page fault. %s (unresolved)", module_name, section_name, faultingAddress, err);
+		PANIC("Page fault");
+	}
 }
 
 /*
@@ -310,7 +346,7 @@ static PageTable_t* cloneTable(PageTable_t* src, uint32_t* physAddr) {
 		table->pages[i].accessed	= src->pages[i].accessed	? 1 : 0;
 		table->pages[i].dirty		= src->pages[i].dirty		? 1 : 0;
 		table->pages[i].isKernel	= src->pages[i].isKernel	? 1 : 0;
-		
+
 		copyPagePhysical(src->pages[i].frame * PAGE_SIZE, table->pages[i].frame * PAGE_SIZE);
 	}
 
@@ -339,7 +375,7 @@ PageDir_t* cloneDir(PageDir_t* src) {
 		} else {
 			phys = 0;
 			dir->tables[i]			= cloneTable(src->tables[i], &phys);
-			dir->tablesPhysical[i]	= phys | 0x07;
+			dir->tablesPhysical[i]	= phys | 0x07;		
 		}
 	}
 	return dir;

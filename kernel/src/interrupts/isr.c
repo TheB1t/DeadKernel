@@ -26,9 +26,9 @@ uint8_t* getInterruptName(uint32_t i) {
 		case 17: return "Alignment check exception";
 		case 18: return "Machine check exception";
 
-		case 32: return "System timer interrupt";
+		case IRQ0: return "System timer interrupt";
+		case IRQ1: return "Keyboard interrupt";
 
-		case 64: return "Yielding";
 		case 128: return "System call";
 
 		default: return "Unknown exception";
@@ -39,10 +39,6 @@ CPURegisters_t* interruptContext = NULL;
 extern Task_t* currentTask;
 
 void MainInterruptHandler(CPURegisters_t* regs) {
-	//uint32_t ss; asm volatile("mov %%ss, %0":"=dN"(ss));
-	//if (ss == 0x28)
-	//	serialprintf(COM1, "Privilege escalation at address 0x%08x\n\r", regs->eip);
-	//printf("%s at address 0x%08x\n", getInterruptName(int_no), regs->eip);
 	interruptContext = regs;
 	
 	if (regs->int_no >= 32 && regs->int_no <= 47) {
@@ -51,6 +47,10 @@ void MainInterruptHandler(CPURegisters_t* regs) {
 
 		outb(0x20, 0x20);
 	}
+
+	// if (regs->int_no != 128 && regs->int_no != 32) {
+	// 	serialprintf(COM1, "Interrupt (%d, %s)...\n", regs->int_no, getInterruptName(regs->int_no));
+	// }
 
 	if (interruptHandlers[regs->int_no] != 0) {
 		interruptHandlers[regs->int_no](regs);

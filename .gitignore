@@ -3,4 +3,4 @@
 build/**
 bx_enh_dbg.ini
 serial.txt
-.vscode/
+.vscode/settings.json

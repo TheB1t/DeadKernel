@@ -28,6 +28,9 @@ typedef struct {
 	uint32_t		physicalAddr;
 } PageDir_t;
 
+extern PageDir_t* kernelDir;
+extern PageDir_t* currentDir;
+
 void allocFrame(Page_t* page, uint32_t isKernel, uint32_t isWriteable);
 void freeFrame(Page_t* page);
 

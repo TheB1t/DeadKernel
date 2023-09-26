@@ -1,5 +1,6 @@
 %macro ISR_NOERRCODE 1
 	[GLOBAL isr%1]
+	type isr%1 function
 	isr%1:
 		cli
 		push dword 0
@@ -9,6 +10,7 @@
 
 %macro ISR_ERRCODE 1
 	[GLOBAL isr%1]
+	type isr%1 function
 	isr%1:
 		cli
 		push dword %1
@@ -17,6 +19,7 @@
 
 %macro IRQ 2
 	[GLOBAL irq%1]
+	type irq%1 function
 	irq%1:
 		cli
 		push dword 0
@@ -57,7 +60,6 @@ ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
 
-ISR_NOERRCODE 64
 ISR_NOERRCODE 128
 
 IRQ		0, 32
@@ -130,7 +132,9 @@ struc CPURegs
 	._val1: resd 1	; SS0
 endstruc
 
+[EXTERN __interruptsDisable]
 [EXTERN MainInterruptHandler]
+type ASMInterruptPreHandler function
 ASMInterruptPreHandler:
     sub esp, 40
 	
@@ -158,9 +162,13 @@ ASMInterruptPreHandler:
 	mov fs, ax
 	mov gs, ax
 
+	lock inc dword [__interruptsDisable]
+
 	push esp
-    call MainInterruptHandler
+	call MainInterruptHandler
     add esp, 4
+
+	lock dec dword [__interruptsDisable]
 
 	mov ax, [esp + CPURegs._ds]
 	mov ds, ax

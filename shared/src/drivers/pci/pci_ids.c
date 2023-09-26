@@ -1,6 +1,4 @@
-#pragma once
-
-#include <utils/common.h>
+#include <drivers/pci/pci_ids.h>
 
 const char* PCIGetClassName(uint32_t classCode) {
 	uint8_t baseClass = (classCode >> 16) & 0xFF;

@@ -2,41 +2,54 @@
 #include <interrupts/isr.h>
 #include <io/screen.h>
 #include <multitasking/task.h>
+#include <io/keyboard.h>
+#include <memory_managment/user_heap.h>
+#include <drivers/pci/pci_user.h>
+#include <multitasking/semaphore.h>
 
 extern uint32_t callSysCall(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, void*);
 static void SysCallHandler();
 
-static uint32_t syscallsCount = 0;
 static void* syscalls[256];
 
-void addSysCall(void* call) {
-	if (syscallsCount >= sizeof(syscalls))
+void addSysCall(uint32_t num, void* call) {
+	if (num >= sizeof(syscalls))
 		return;
 		
-	syscalls[syscallsCount++] = call;
+	syscalls[num] = call;
 }
 
 void initSysCalls() {
 	memset(syscalls, 0, sizeof(syscalls));
 	
-	addSysCall(&screenGetColor);
-	addSysCall(&screenSetColor);
-	addSysCall(&screenPutChar);
-	addSysCall(&screenPutString);
-	addSysCall(&screenClear);
+	addSysCall(0x0, &getPID);
+	addSysCall(0x1, &yield);
+	addSysCall(0x2, &fork);
 
-	addSysCall(&getPID);
+	addSysCall(0x3, &screenGetColor);
+	addSysCall(0x4, &screenSetColor);
+	addSysCall(0x5, &screenPutChar);
+	addSysCall(0x6, &screenPutString);
+	addSysCall(0x7, &screenClear);
+
+    addSysCall(0x8, &keyboardReadReady);
+    addSysCall(0x9, &keyboardGetChar);
+
+    addSysCall(0xa, &user_malloc);
+    addSysCall(0xb, &user_free);
+
+	addSysCall(0xc, &user_PCIDirectScan);
+
+	addSysCall(0xd, &semctl);
 
 	registerInterruptHandler(128, &SysCallHandler);
 }
 
 void SysCallHandler(CPURegisters_t* regs) {
-
-	if (regs->eax >= syscallsCount)
-		return;
-
 	void* location = syscalls[regs->eax];
 
+	if (!location)
+		return;
 	int ret;
 	asm volatile ("		\
 		push %1;		\
@@ -58,5 +71,5 @@ void SysCallHandler(CPURegisters_t* regs) {
 			"r" (regs->ebx),
 			"r" (location)
 	);
-	regs->eax = ret;	
+	regs->eax = ret;
 }

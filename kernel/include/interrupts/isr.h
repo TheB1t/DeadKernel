@@ -1,7 +1,6 @@
 #pragma once
 
 #include <utils/common.h>
-#include <io/screen.h>
 
 #define IRQ0 32
 #define IRQ1 33

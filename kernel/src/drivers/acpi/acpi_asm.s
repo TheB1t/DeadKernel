@@ -1,5 +1,6 @@
 ; RSDP_t* ll_find_rsdp(void)
 [GLOBAL ll_find_rsdp]
+type ll_find_rsdp function
 ll_find_rsdp:
     mov eax, 0x0E0000
     mov edx, 0x0FFFFF

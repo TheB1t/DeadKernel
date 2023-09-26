@@ -1,9 +1,29 @@
 #include <utils/common.h>
-#include <io/screen.h>
 #include <interrupts/isr.h>
 #include <multitasking/task.h>
 #include <multitasking/systimer.h>
 #include <utils/stackTrace.h>
+
+void memPrint(uint8_t* mem, uint32_t size) {
+	#define OUT_W 16
+	
+	serialprintf(COM1, "---- memory start at 0x%08x ----\n", mem);
+	for (uint32_t i = 0; i < size / OUT_W; i++) {
+		serialprintf(COM1, "%08x | ", mem + (OUT_W * i));
+		for (uint32_t j = 0; j < OUT_W; j++) {
+			serialprintf(COM1, "%02x ", mem[(OUT_W * i) + j]);
+		}
+		serialprintf(COM1, "| ");
+		for (uint32_t j = 0; j < OUT_W; j++) {
+			if (mem[(OUT_W * i) + j]  > 31)
+				serialprintf(COM1, "%.1c", mem[(OUT_W * i) + j]);
+			else
+				serialprintf(COM1, ".");
+		}
+		serialprintf(COM1, "\n");
+	}
+	serialprintf(COM1, "---- memory end at 0x%08x ----\n", mem + size);
+}
 
 void outb(uint16_t port, uint8_t value) {
 	asm volatile ("outb %1, %0" : : "dN" (port), "a" (value));
@@ -35,97 +55,9 @@ uint32_t inl(uint16_t port) {
 	return ret;
 }
 
-void memcpy(void *dest, const void *src, uint32_t len) {
-    const uint8_t* sp = (const uint8_t*)src;
-    uint8_t* dp = (uint8_t*)dest;
-    while(len--) 
-		*dp++ = *sp++;
-}
-
-void memset(void* dest, uint8_t val, uint32_t len) {
-    uint8_t* temp = (uint8_t*)dest;
-    while (len--) 
-		*temp++ = val;
-}
-
-int strlen(const char* str) {
-	int len = 0;
-	while (*str++)
-		len++;
-
-	return len;
-}
-
-int strcmp(const char *str1, const char *str2) {
-    while (*str1) {
-        if (*str1 != *str2)
-            break;
- 
-        str1++;
-        str2++;
-    }
- 
-    return *(const unsigned char*)str1 - *(const unsigned char*)str2;
-}
-
-int strncmp(const char *str1, const char *str2, uint32_t n) {
-    while (n > 0 && *str1) {
-		if (*str1 != *str2)
-			break;
-
-        str1++;
-        str2++;
-        n--;
-    }
- 
-    return n != 0;
-}
-
-char* strcpy(char* dest, const char* src) {
-	char* tmp = dest;
-	while((*dest++ = *src++) != '\0');
-	*(--dest) = '\0';
-	return tmp;
-}
-
-char *strcat(char* dest, const char* src) {
-	char* tmp = dest;
-	while(*dest)
-		dest++;
-	while((*dest++ = *src++) != '\0');
-	return tmp;
-}
-
-void itoa(char* result, uint32_t base, int32_t value) {
-    // check that the base if valid
-    if (base < 2 || base > 36) {
-        *result = '\0';
-    }
-
-    char *ptr = result, *ptr1 = result, tmp_char;
-    int tmp_value;
-
-    do {
-        tmp_value = value;
-        value /= base;
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + (tmp_value - value * base)];
-    } while (value);
-
-    // Apply negative sign
-    if (tmp_value < 0) *ptr++ = '-';
-    *ptr-- = '\0';
-    while (ptr1 < ptr) {
-        tmp_char = *ptr;
-        *ptr-- = *ptr1;
-        *ptr1++ = tmp_char;
-    }
-}
-
 void sleep(uint32_t ms) {
 	uint32_t targetTicks = getSysTimerTicks() + ms;
-	while (getSysTimerTicks() < targetTicks) {
-		yield();
-	}
+	while (getSysTimerTicks() < targetTicks);
 }
 
 void kernel_warn(const char* message) {
@@ -143,7 +75,7 @@ void kernel_panic(const char* message) {
 	panicCounter++;
 	DISABLE_INTERRUPTS();
 	printf("[Kernel Panic] %s at address 0x%08x\n", message, getInterruptedContext()->eip);
-	stackTrace(8);
+	stackTrace(20);
 	for(;;);
 }
 

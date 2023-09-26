@@ -1,33 +1,13 @@
 #include <multiboot.h>
 #include <utils/common.h>
-#include <io/screen.h>
 #include <interrupts/descriptor_tables.h>
 #include <utils/stackTrace.h>
+#include <modules/modules.h>
 
 #include <fs/elf/elf.h>
 
 extern uint32_t placementAddress;
 extern int32_t kernel_main();
-ELF32Header_t* testModule;
-
-void memPrint(uint8_t* mem, uint32_t size) {
-	#define OUT_W 16
-
-	for (uint32_t i = 0; i < size / OUT_W; i++) {
-		printf("%08X | ", OUT_W * i);
-		for (uint32_t j = 0; j < OUT_W; j++) {
-			printf("%02X ", mem[(OUT_W * i) + j]);
-		}
-		printf("| ");
-		for (uint32_t j = 0; j < OUT_W; j++) {
-			if (mem[(OUT_W * i) + j]  > 31)
-				printf("%.1c", mem[(OUT_W * i) + j]);
-			else
-				printf(".");
-		}
-		printf("\n");
-	}
-}
 
 typedef struct {
 	uint32_t	E			:1;
@@ -48,7 +28,7 @@ void GPFHandler(CPURegisters_t* regs) {
 			regs->eip
 		);
 	}
-	//stackTrace(6);
+	stackTrace(20);
 	//BREAKPOINT;
 	for(;;);
 }
@@ -60,10 +40,29 @@ int32_t main(multiboot_t* mboot) {
 
 
 	LOG_INFO("[GRUB] Loaded %d modules", mboot->mods_count);
-	multiboot_mods_t* mods = (multiboot_mods_t*)mboot->mods_addr;
+	multiboot_mods_t* modules = (multiboot_mods_t*)mboot->mods_addr;
+	initModules(modules, mboot->mods_count);
+
 	if (mboot->mods_count > 0) {
-		testModule = (ELF32Header_t*)mods[0].mod_start;
-		placementAddress = mods[mboot->mods_count - 1].mod_end;
+		placementAddress = modules[mboot->mods_count - 1].mod_end;
+
+		printf("Loaded modules: ");
+    	ELF32Obj_t module;
+		for (uint32_t i = 0; i < mboot->mods_count; i++) {
+			memset(&module, 0, sizeof(ELF32Obj_t));
+
+        	if (!ELFLoad(modules[i].mod_start, &module))
+            	continue;
+
+			char* module_name = getModuleName(&module);
+
+			if (module_name == NULL)
+				continue;
+
+			printf("%s (at 0x%08x) ", module_name, module.header);
+		}
+
+		printf("\n");
 	}
 
 	LOG_INFO("[GRUB] Loaded %s table",
@@ -73,12 +72,22 @@ int32_t main(multiboot_t* mboot) {
 	
 	//init stacktrace variables
 	if (mboot->flags & MULTIBOOT_FLAG_ELF) {
-		kernelSectionTable = (KernelSectionHeader_t*)mboot->addr;
-		sectionTableSize = mboot->num;
-		sectionStringTableIndex = mboot->shndx;
+		initKernelTable((void*)mboot->addr, mboot->num, mboot->shndx);
 	} else {
 		WARN("Section table can't load! Stacktrace in semi-functional mode");
 	}
 	
+    // for(uint32_t i = 0; i < mboot->mmap_length; i += sizeof(multiboot_memory_map_t)) {
+    //     multiboot_memory_map_t* mmmt = (multiboot_memory_map_t*) (mboot->mmap_addr + i);
+ 
+    //     printf("Start Addr: %08x | Length: %08x | Size: %04x | Status: %s\n",
+    //         mmmt->addr_low, mmmt->len_low, mmmt->size, 
+	// 		mmmt->type == MULTIBOOT_MEMORY_AVAILABLE ? "Available" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_RESERVED ? "Reserved" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE ? "ACPI" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_NVS ? "NVS" :
+	// 		mmmt->type == MULTIBOOT_MEMORY_BADRAM ? "BadRam" : "Unknown");
+    // }
+
 	return kernel_main();
 }

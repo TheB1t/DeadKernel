@@ -109,7 +109,6 @@ static void InitIDT() {
 	IDTSetGate(30, (uint32_t)isr30, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(31, (uint32_t)isr31, 0x08, pack_flags(0b1, 0b00));
 	
-	IDTSetGate(64, (uint32_t)isr64, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(128, (uint32_t)isr128, 0x08, pack_flags(0b1, 0b00));
 	
 	outb(0x20, 0x11);
