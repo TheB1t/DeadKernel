@@ -29,7 +29,9 @@ uint8_t* getInterruptName(uint32_t i) {
 		case IRQ0: return "System timer interrupt";
 		case IRQ1: return "Keyboard interrupt";
 
-		case 128: return "System call";
+		case CORE_FORK: return "Forking";
+		case CORE_YIELD: return "Yielding";
+		case CORE_SYSCALL: return "System call";
 
 		default: return "Unknown exception";
 	}

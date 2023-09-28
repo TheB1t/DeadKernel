@@ -23,8 +23,6 @@ void initSysCalls() {
 	memset(syscalls, 0, sizeof(syscalls));
 	
 	addSysCall(0x0, &getPID);
-	addSysCall(0x1, &yield);
-	addSysCall(0x2, &fork);
 
 	addSysCall(0x3, &screenGetColor);
 	addSysCall(0x4, &screenSetColor);
@@ -42,7 +40,7 @@ void initSysCalls() {
 
 	addSysCall(0xd, &semctl);
 
-	registerInterruptHandler(128, &SysCallHandler);
+	registerInterruptHandler(CORE_SYSCALL, &SysCallHandler);
 }
 
 void SysCallHandler(CPURegisters_t* regs) {

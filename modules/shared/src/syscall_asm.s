@@ -14,8 +14,6 @@
 %endmacro
 
 SYSTEMCALL 0x0, getPID
-SYSTEMCALL 0x1, yield
-SYSTEMCALL 0x2, fork
 
 SYSTEMCALL 0x3, screenGetColor
 SYSTEMCALL 0x4, screenSetColor

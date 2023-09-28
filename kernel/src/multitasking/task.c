@@ -18,6 +18,9 @@ void		createStack(uint32_t newStart, uint32_t size, bool isKernel);
 void		cloneStack(uint32_t oldStart, uint32_t newStart, uint32_t size, bool isKernel, uint32_t* ESP, uint32_t* EBP);
 void		moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size);
 
+void		forkInterrupt(CPURegisters_t* regs);
+void		yieldInterrupt(CPURegisters_t* regs);
+
 void initTasking() {
 	DISABLE_INTERRUPTS();
 	
@@ -49,6 +52,9 @@ void initTasking() {
 				  "=r" (kernelTask->regs.eflags));
 
 	runTask(kernelTask);
+
+	registerInterruptHandler(CORE_FORK, &forkInterrupt);
+	registerInterruptHandler(CORE_YIELD, &yieldInterrupt);
 
 	ENABLE_INTERRUPTS();
 }
@@ -313,11 +319,11 @@ void moveStack(uint32_t oldStart, uint32_t newStart, uint32_t size) {
 }
 
 
-int32_t fork() {
-	if (!isTaskingInit())
-		return -1;
-
-	CPURegisters_t* regs = getInterruptedContext();
+void forkInterrupt(CPURegisters_t* regs) {
+	if (!isTaskingInit()) {
+		regs->eax = -1;
+		return;
+	}
 
 	Task_t* newTask			= allocTask();
 
@@ -334,18 +340,17 @@ int32_t fork() {
 	newTask->regs.eax	= 0;
 
 	runTask(newTask);
+	regs->eax = newTask->id;
 
 	serialprintf(COM1, "(0x%08x) Current task: %d (0x%08x), New task: %d (0x%08x)\n", regs->eip, currentTask->id, currentTask, newTask->id, newTask);
-
-	return newTask->id;
 }
 
-void yield() {
+void yieldInterrupt(CPURegisters_t* regs) {
 	if (!isTaskingInit())
 		return;
 	
 	currentTask->status = TS_YIELD;
-	switchTask(getInterruptedContext());
+	switchTask(regs);
 }
 
 uint8_t	isTaskingInit() {

@@ -105,15 +105,12 @@ void handle_command(char* command) {
             return;
 
         if (new_pid > 0) {
-            // Little 'delay' :/
-            for (uint32_t i = 0; i < 15; i++) 
-                yield();
-
+            printf("[Parent] New shell pid (%d): %d\n", getPID(), new_pid);
             mutex_lock(&mutex);
             mutex_unlock(&mutex);
         } else {
             mutex_lock(&mutex);
-            printf("New shell pid (%d): %d\n", getPID(), new_pid);
+            printf("[Child] New shell pid (%d): %d\n", getPID(), new_pid);
         }
 
     COMMAND(exit)

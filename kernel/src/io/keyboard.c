@@ -28,12 +28,12 @@ uint8_t kbdus[128] = {
 	'*',
 	0,	/* Alt */
 	' ',	/* Space bar */
-	0,	/* 58 - Caps lock */
+	0,	/* Caps lock */
 	0,	/* 59 - F1 key ... > */
 	0,   0,   0,   0,   0,   0,   0,   0,
 	0,	/* < ... F10 */
 	0,	/* 69 - Num lock*/
-	0,	/* 70 - Scroll Lock */
+	0,	/* Scroll Lock */
 	0,	/* Home key */
 	0,	/* Up Arrow */
 	0,	/* Page Up */
@@ -135,13 +135,13 @@ uint8_t* kbd_retToName(uint8_t ret) {
 }
 
 void __kbd_write(uint8_t byte) {
-	serialprintf(COM1, "[kbd] Write [%c, 0x%02x, %s]\n", byte, byte, kbd_cmdToName(byte));
+	// serialprintf(COM1, "[kbd] Write [%c, 0x%02x, %s]\n", byte, byte, kbd_cmdToName(byte));
 	outb(0x60, byte);
 }
 
 uint8_t __kbd_read() {
 	uint8_t byte = inb(0x60);
-	serialprintf(COM1, "[kbd] Read [%c, 0x%02x, %s]\n", byte, byte, kbd_retToName(byte));
+	// serialprintf(COM1, "[kbd] Read [%c, 0x%02x, %s]\n", byte, byte, kbd_retToName(byte));
 	return byte;
 }
 

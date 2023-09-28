@@ -70,9 +70,6 @@ void 		destroyTask(Task_t* task);
 Task_t*		allocTask();
 void		freeTask(Task_t* task);
 
-int32_t		fork();
-void		yield();
-
 uint8_t		isTaskingInit();
 Task_t*		getCurrentTask();
 int32_t		getPID();

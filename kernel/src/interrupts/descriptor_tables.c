@@ -108,7 +108,9 @@ static void InitIDT() {
 	IDTSetGate(29, (uint32_t)isr29, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(30, (uint32_t)isr30, 0x08, pack_flags(0b1, 0b00));
 	IDTSetGate(31, (uint32_t)isr31, 0x08, pack_flags(0b1, 0b00));
-	
+
+	IDTSetGate(126, (uint32_t)isr126, 0x08, pack_flags(0b1, 0b00));	
+	IDTSetGate(127, (uint32_t)isr127, 0x08, pack_flags(0b1, 0b00));	
 	IDTSetGate(128, (uint32_t)isr128, 0x08, pack_flags(0b1, 0b00));
 	
 	outb(0x20, 0x11);
@@ -122,22 +124,22 @@ static void InitIDT() {
 	outb(0x21, 0x0);
 	outb(0xA1, 0x0);
 
-	IDTSetGate(32, (uint32_t)irq0, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(33, (uint32_t)irq1, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(34, (uint32_t)irq2, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(35, (uint32_t)irq3, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(36, (uint32_t)irq4, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(37, (uint32_t)irq5, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(38, (uint32_t)irq6, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(39, (uint32_t)irq7, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(40, (uint32_t)irq8, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(41, (uint32_t)irq9, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(42, (uint32_t)irq10, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(43, (uint32_t)irq11, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(44, (uint32_t)irq12, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(45, (uint32_t)irq13, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(46, (uint32_t)irq14, 0x08, pack_flags(0b1, 0b00));
-	IDTSetGate(47, (uint32_t)irq15, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ0, (uint32_t)irq0, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ1, (uint32_t)irq1, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ2, (uint32_t)irq2, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ3, (uint32_t)irq3, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ4, (uint32_t)irq4, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ5, (uint32_t)irq5, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ6, (uint32_t)irq6, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ7, (uint32_t)irq7, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ8, (uint32_t)irq8, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ9, (uint32_t)irq9, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ10, (uint32_t)irq10, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ11, (uint32_t)irq11, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ12, (uint32_t)irq12, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ13, (uint32_t)irq13, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ14, (uint32_t)irq14, 0x08, pack_flags(0b1, 0b00));
+	IDTSetGate(IRQ15, (uint32_t)irq15, 0x08, pack_flags(0b1, 0b00));
 	
 	IDTFlush((uint32_t)&IDT);
 }

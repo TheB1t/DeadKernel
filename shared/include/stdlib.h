@@ -9,6 +9,8 @@
 	asm volatile("xchgw %bx, %bx;");	\
 }
 
+extern int32_t fork();
+extern void	yield();
 uint32_t    getRing();
 
 void 		memcpy(void* dest, const void* src, uint32_t len);

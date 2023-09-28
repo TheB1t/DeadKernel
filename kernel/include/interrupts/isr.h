@@ -19,6 +19,10 @@
 #define IRQ14 46
 #define IRQ15 47
 
+#define CORE_FORK    126
+#define CORE_YIELD   127
+#define CORE_SYSCALL 128
+
 typedef struct {
 	uint32_t	CF   : 1;
 	uint32_t	r0   : 1;
